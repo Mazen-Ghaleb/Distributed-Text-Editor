@@ -1,101 +1,55 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Shared Document Editor</title>
-
-    <style>
-    html,body {
-        height: calc(100% - 30px);
-    }
-
-    #container {
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-    }
-
-    #editor, #editor-container {
-        height: 100%;
-    }
-
-    /* The alert message box */
-    .alert {
-        position: fixed;
-        /* width: 100%; */
-        bottom: 0px;
-        padding: 20px;
-        /* background-color: #f44336; Red */
-        color: white;
-        margin-bottom: 15px;
-        /* padding-right: 200px; */
-    }
-
-    /* The close button */
-    .closebtn {
-        margin-left: 15px;
-        color: white;
-        font-weight: bold;
-        float: right;
-        font-size: 22px;
-        line-height: 20px;
-        cursor: pointer;
-        transition: 0.3s;
-    }
-
-    /* When moving the mouse over the close button */
-    .closebtn:hover {
-        color: black;
-    } 
-    </style>
-</head>
-<body>
+    <link rel="stylesheet" type="text/css" href="./style.css" />
+  </head>
+  <body>
     <!-- Include stylesheet -->
-    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
-    
-    <div class="alert" style="display:none">
-        <span class="closebtn"  style="display:block" onclick="this.parentElement.style.display='none';">&times;</span>
-        <div id="errorAlert" style="display:inline">This is an alert box.</div>
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet" />
+
+    <div class="alert" style="display: none">
+      <span class="closebtn" style="display: block" onclick="this.parentElement.style.display='none';">&times;</span>
+      <div id="errorAlert" style="display: inline">This is an alert box.</div>
     </div>
 
     <!-- Create the editor container -->
-    <div id="container" style="display:none">
-        <div id="editor-container">
-            <div id="editor"></div>
-        </div>
+    <div id="container" style="display: none">
+      <div id="editor-container">
+        <div id="editor"></div>
+      </div>
     </div>
 
     <div id="documents">
-        <form onsubmit="return openDocumentHandler(this)">
-            <h3>Open Existing Document:</h3>
-            <label for="documentSelect">Document Name: </label>
-            <select name="documentSelect" id="documentSelect">
-            </select> 
-            
-            <input type="button" value="Refresh" onclick="AWS.call('listDocuments'); document.getElementById('documentSelect').innerHTML = '';">
+      <form onsubmit="return openDocumentHandler(this)">
+        <h3>Open Existing Document:</h3>
+        <label for="documentSelect">Document Name: </label>
+        <select name="documentSelect" id="documentSelect"></select>
 
-            <br>
-            <input type="submit" value="Open">
-        </form>
-        
-        <br>
+        <!-- <input type="button" value="Refresh" onclick="updateDocuments()" /> -->
 
-        <form onsubmit="return createDocumentHandler(this)">
-            <h3>Create new Document:</h3>
-            <label for="documentName">Document Name: </label>
+        <br />
+        <input type="submit" value="Open" />
+      </form>
 
-            <input type="text" name="documentName" id="documentName">
+      <br />
 
-            <br>
-            <input type="submit" value="Create">
-        </form>
+      <form onsubmit="return createDocumentHandler(this)">
+        <h3>Create new Document:</h3>
+        <label for="documentName">Document Name: </label>
+
+        <input type="text" name="documentName" id="documentName" />
+
+        <br />
+        <input type="submit" value="Create" />
+      </form>
     </div>
 
     <!-- <script>var exports = {};</script> -->
-        <!-- Include the Quill library -->
+    <!-- Include the Quill library -->
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
 
     <!-- <script type="module" src="./delta/delta.bundle.js"></script> -->
@@ -103,14 +57,21 @@
 
     <script src="./remote.js"></script>
     <script src="./delta_handler.js"></script>
-    
+    <script>
+      function updateDocuments() {
+        AWS.call('listDocuments');
+        //document.getElementById('documentSelect').innerHTML = '';
+      }
+      setInterval(updateDocuments, 5000);
+    </script>
+
     <!-- Initialize Quill editor -->
     <script>
-    var quill = new Quill('#editor', {
+      var quill = new Quill('#editor', {
         placeholder: 'Your document is empty...',
-        theme: 'snow'
-    });
-    quill.on('text-change', window.textChangeHandler);
+        theme: 'snow',
+      });
+      quill.on('text-change', window.textChangeHandler);
     </script>
-</body>
+  </body>
 </html>

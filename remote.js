@@ -22,12 +22,17 @@ function Remote(openHandler, messageHandler)
         } else {
             // e.g. server process killed or network down
             // event.code is usually 1006 in this case
-            console.log('[close] Connection died'); // TODO refresh page
+            console.log('[close] Connection died'); 
+            
+            setTimeout("location.reload(true);",5000); // Refresh page after 5 seconds
+
         }
     };
 
     this.sock.onerror = function(error) {
         console.log(`[error] ${error.message}`);
+
+        setTimeout("location.reload(true);",5000); // Refresh page after 5 seconds
     };
 
     this.call = function(action, body) {

@@ -90,11 +90,24 @@ function newDocumentHandler(statusCode, body)
 
 function listDocumentsHandler(statusCode, body)
 {
-    documentSelect.innerHTML = "";
+    var isNotSameDoc = false;
     for(const doc in body["documents"])
     {
         let documentName = body["documents"][doc]["documentName"];
-        documentSelect.innerHTML += `<option value=\"${documentName}\">${documentName}</option>`;
+        if (documentSelect.innerHTML !== `<option value=\"${documentName}\">${documentName}</option>`){
+            isNotSameDoc = true;
+            break;
+        }
+    }
+    
+    if (isNotSameDoc) {
+        documentSelect.innerHTML = "";
+        console.log(body["documents"]);
+        for(const doc in body["documents"])
+        {
+            let documentName = body["documents"][doc]["documentName"];
+            documentSelect.innerHTML += `<option value=\"${documentName}\">${documentName}</option>`;
+        }
     }
 }
 
