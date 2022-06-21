@@ -1,9 +1,14 @@
 let syncedVersion = 0;
 let allDeltas = [];
 
+//Should have the document up to allDeltas[syncedVersion]
+let syncedDocument = new Quill.imports.delta();
+
+
 let syncedDelta = undefined;
 let pendingDelta = undefined;
 let blockedDelta = undefined;
+
 
 let errorAlert = document.getElementById("errorAlert");
 let alertTimeout = undefined;
@@ -130,7 +135,8 @@ function newDeltaHandler(statusCode, body)
             allDeltas[syncedVersion] = delta;
             syncedVersion++;
             pendingDelta = undefined;
-
+            syncedDocument = syncedDocument.compose(JSON.parse(allDeltas[deltaVersion]));
+            console.log("DOCUMENT SO FAR: " + syncedDocument);
             quill.updateContents(JSON.parse(allDeltas[deltaVersion]), 'silent');
         }
         else if(isOwn === true)
@@ -138,13 +144,16 @@ function newDeltaHandler(statusCode, body)
             // The very normal case w/o any races: We sent a delta, and we received that delta
             allDeltas[syncedVersion] = delta;
             syncedVersion++;
-            pendingDelta = undefined; 
-            
+            pendingDelta = undefined;
+
+            syncedDocument = syncedDocument.compose(JSON.parse(allDeltas[deltaVersion]));
+            console.log("DOCUMENT SO FAR: " + syncedDocument);
+
+
             if(blockedDelta !== undefined)
             {
                 pendingDelta = blockedDelta;
                 AWS.call("addDelta", { "documentVersion": syncedVersion, "delta": JSON.stringify(pendingDelta) })
-
                 blockedDelta = undefined;
             }
         }
@@ -159,19 +168,33 @@ function newDeltaHandler(statusCode, body)
                 pendingDelta = pendingDelta.compose(blockedDelta);
                 blockedDelta = undefined;
             }
-            
+
             allDeltas[deltaVersion] = delta;
             syncedVersion++;
 
-            let newdoc = new Quill.imports.delta({});
-            for(let i = 0; i < syncedVersion; i++)
-                newdoc = newdoc.compose(new Quill.imports.delta(JSON.parse(allDeltas[i])))
-            console.log(newdoc)
+            syncedDocument = syncedDocument.compose(JSON.parse(allDeltas[deltaVersion]));
+            console.log("DOCUMENT: " + syncedDocument);
+
+            
+            // UNCOMMENT THE NEXT BLOCK IF SYNCEDDOCUMENT DOESN'T WORK
+            // let newdoc = new Quill.imports.delta({});
+            // for(let i = 0; i < syncedVersion; i++)
+            //     newdoc = newdoc.compose(new Quill.imports.delta(JSON.parse(allDeltas[i])))
+            // console.log(newdoc)
+            // END BLOCK
+
 
             // syncedDelta = syncedDelta.compose(parsedDelta)
             let selection = quill.getSelection(); // TODO transform this
             // console.warn(syncedDelta)
-            quill.setContents(newdoc, 'silent'); // Update the document in the user's view
+
+            quill.setContents(syncedDocument,'silent');
+
+
+            // UNCOMMENT THIS IF IT ALL GOES WRONG
+            //quill.setContents(newdoc, 'silent'); // Update the document in the user's view
+
+
             // syncedDelta = new Quill.imports.delta(syncedDelta);
 
             // console.warn(pendingDelta)
