@@ -103,10 +103,15 @@ function listDocumentsHandler(statusCode, body)
     if (isNotSameDoc) {
         documentSelect.innerHTML = "";
         console.log(body["documents"]);
+        let sortArr = [];
         for(const doc in body["documents"])
         {
             let documentName = body["documents"][doc]["documentName"];
-            documentSelect.innerHTML += `<option value=\"${documentName}\">${documentName}</option>`;
+            sortArr.push(documentName)
+        }
+        sortArr.sort()
+        for (var i =0; i<sortArr.length;i++){
+            documentSelect.innerHTML += `<option value=\"${sortArr[i]}\">${sortArr[i]}</option>`;
         }
     }
 }
