@@ -54,6 +54,8 @@ function openDocumentHandler()
     }
 
     AWS.call("joinDocument", { "documentName": documentSelect.value });
+    clearInterval(SelectionInterval);
+
     return false;
 }
 
@@ -66,6 +68,7 @@ function createDocumentHandler()
     }
     
     AWS.call("newDocument", { "documentName": documentName.value });
+    clearInterval(SelectionInterval);
     return false;
 }
 
@@ -102,14 +105,13 @@ function listDocumentsHandler(statusCode, body)
     
     if (isNotSameDoc) {
         documentSelect.innerHTML = "";
-        console.log(body["documents"]);
         let sortArr = [];
         for(const doc in body["documents"])
         {
             let documentName = body["documents"][doc]["documentName"];
             sortArr.push(documentName)
         }
-        sortArr.sort()
+        sortArr.sort((a, b) => a.localeCompare(b))
         for (var i =0; i<sortArr.length;i++){
             documentSelect.innerHTML += `<option value=\"${sortArr[i]}\">${sortArr[i]}</option>`;
         }
@@ -125,6 +127,7 @@ function joinDocumentHandler(statusCode, body)
 
 function newDeltaHandler(statusCode, body)
 {
+    
     let delta = body["delta"];
     let isOwn = body["isOwn"];
     let deltaVersion = body["version"];
@@ -154,7 +157,6 @@ function newDeltaHandler(statusCode, body)
             syncedVersion++;
             pendingDelta = undefined;
             syncedDocument = syncedDocument.compose(JSON.parse(allDeltas[deltaVersion]));
-            console.log("DOCUMENT SO FAR: " + syncedDocument);
             quill.updateContents(JSON.parse(allDeltas[deltaVersion]), 'silent');
         }
         else if(isOwn === true)
@@ -165,7 +167,6 @@ function newDeltaHandler(statusCode, body)
             pendingDelta = undefined;
 
             syncedDocument = syncedDocument.compose(JSON.parse(allDeltas[deltaVersion]));
-            console.log("DOCUMENT SO FAR: " + syncedDocument);
 
 
             if(blockedDelta !== undefined)
@@ -190,9 +191,9 @@ function newDeltaHandler(statusCode, body)
             allDeltas[deltaVersion] = delta;
             syncedVersion++;
 
-            syncedDocument = syncedDocument.compose(JSON.parse(allDeltas[deltaVersion]));
-            console.log("DOCUMENT: " + syncedDocument);
+            // CHECK FOR         // Out of order receipt of deltas (might happen in the case of different execution times of the lambda functions) IF THE PREVIOUS DELTAS WILL WORK
 
+            syncedDocument = syncedDocument.compose(JSON.parse(allDeltas[deltaVersion]));
             
             // UNCOMMENT THE NEXT BLOCK IF SYNCEDDOCUMENT DOESN'T WORK
             // let newdoc = new Quill.imports.delta({});
@@ -205,9 +206,9 @@ function newDeltaHandler(statusCode, body)
             // syncedDelta = syncedDelta.compose(parsedDelta)
             let selection = quill.getSelection(); // TODO transform this
             // console.warn(syncedDelta)
-
+            
             quill.setContents(syncedDocument,'silent');
-
+            //quill.updateContents(new Delta().retain(quill.getSelection().index));
 
             // UNCOMMENT THIS IF IT ALL GOES WRONG
             //quill.setContents(newdoc, 'silent'); // Update the document in the user's view
@@ -217,9 +218,10 @@ function newDeltaHandler(statusCode, body)
 
             // console.warn(pendingDelta)
             let parsedDelta = new Quill.imports.delta(JSON.parse(delta));
+            //console.log(parsedDelta)
+            console.log("Length: " + selection.length +" Index: " + selection.index)
+            //selection.index = parsedDelta.transformPosition(selection.index, false);
 
-            // selection.length = parsedDelta.transformPosition(selection.index + selection.length) - selection.index;
-            // selection.index = parsedDelta.transformPosition(selection.index, false);
             quill.setSelection(selection);
 
             pendingDelta = parsedDelta.transform(pendingDelta, true); // Transform the previously made (unsynced) changes
