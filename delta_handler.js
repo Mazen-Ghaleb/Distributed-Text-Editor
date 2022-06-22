@@ -5,6 +5,7 @@ let allDeltas = [];
 
 //Should have the document up to allDeltas[syncedVersion]
 let syncedDocument = new Delta();
+let loadedDocument = new Delta();
 
 let pendingDelta = undefined;
 let blockedDelta = undefined;
@@ -14,6 +15,8 @@ let alertTimeout = undefined;
 
 let editUI = document.getElementById("container");
 let documentsUI = document.getElementById("documents");
+
+let latestDelta = 0;
 
 let documentSelect = document.getElementById("documentSelect");
 let documentName = document.getElementById("documentName");
@@ -117,11 +120,55 @@ function listDocumentsHandler(statusCode, body)
     }
 }
 
+function composeDocumentOnJoin(statusCode, body){
+    newVersion = body["newVersion"];
+    oldVersion = body["oldVersion"];
+    deltas = body["deltas"];
+    
+
+
+    for (const delta of deltas){
+        loadedDocument = loadedDocument.compose(JSON.parse(delta));
+    }
+
+    if (newVersion === latestDelta){
+        alertSuccess("Opened document");
+        editUI.style.display = "block";
+        documentsUI.style.display = "none"
+        syncedVersion = latestDelta;
+        quill.setContents(loadedDocument,'silent');
+        
+    }
+    else{
+        if(latestDelta - newVersion <= 100){
+            AWS.call("getDeltas", { "oldVersion": newVersion+1, "newVersion": latestDelta})
+        }
+        else{
+            AWS.call("getDeltas"),{"oldVersion": newVersion+1, "newVersion": (newVersion+1)+99}
+        }
+    }
+}
+
 function joinDocumentHandler(statusCode, body)
 {
-    alertSuccess("Opened document");
-    editUI.style.display = "block";
-    documentsUI.style.display = "none";   
+    loadedDocument = new Delta();
+    latestDelta = parseInt(body['documentVersion']);
+
+
+    if (latestDelta<100){
+        AWS.call("getDeltas", { "oldVersion": 0, "newVersion": latestDelta })
+    }
+    else{
+        AWS.call("getDeltas", { "oldVersion": 0, "newVersion": 99})
+    }
+
+    // TODO handle more than 100 deltas
+
+
+    // UNCOMMENT IF EVERYTHING GOES WRONG
+    // alertSuccess("Opened document");
+    // editUI.style.display = "block";
+    // documentsUI.style.display = "none";   
 }
 
 function newDeltaHandler(statusCode, body)
@@ -243,6 +290,9 @@ function messageHandler(message)
             break;
         case "newDelta":
             newDeltaHandler(statusCode, body);
+            break;
+        case "getDeltas":
+            composeDocumentOnJoin(statusCode,body);
             break;
         default:
             console.error(`Unknown Action \"${message.action}\"`)
