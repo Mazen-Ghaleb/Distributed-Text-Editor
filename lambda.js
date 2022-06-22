@@ -28,6 +28,8 @@ const sendToOne = async(connectionId, body) => {
 };
 
 const sendToMany = async(connectionIds, body) => {
+    if(connectionIds.length === 0) return;
+    
     const all = connectionIds.map(i => sendToOne(i, body));
     return Promise.all(all);
 };
@@ -226,6 +228,9 @@ const addDelta = async(connectionId, body) => {
 
         await sendToMany(otherUsers, newDelta)
         
+        // const sleep = ms => new Promise(r => setTimeout(r, ms));
+        // await sleep(Math.random()*2000);
+        
         newDeltaBody["isOwn"] = true;
         newDelta["body"] = JSON.stringify(newDeltaBody);
         
@@ -233,6 +238,63 @@ const addDelta = async(connectionId, body) => {
     }
     
     success({"accepted": accepted, "version": body["documentVersion"] });
+    return undefined;
+}
+
+const getDeltas = async(connectionId, body) => {
+    if(!body.hasOwnProperty("oldVersion")) return error("No old version")
+    if(!body.hasOwnProperty("newVersion")) return error("No new version")
+    
+    if(body["newVersion"] - body["oldVersion"] > 100)  return error("Cannot get more than 100 deltas at a time")
+    if(body["oldVersion"] < 0)  return error("Old version less than zero")
+
+    const user =  await ddbClient.get({
+        TableName: "shared-docs-users",
+        Key: { 'connectionId': connectionId },
+        ProjectionExpression: "documentName"
+    }).promise();
+    
+    if(user === undefined || user.Item === undefined || user.Item["documentName"] == undefined)
+        return error("Not in a document");
+    
+    const doc =  await ddbClient.get({
+        TableName: "shared-docs-documents",
+        Key: { 'documentName': user.Item["documentName"] },
+        ProjectionExpression: ["documentVersion", "documentDeltas"]
+    }).promise();
+    
+    if(doc.Item["documentVersion"] < body["newVersion"])
+        return error("New version bigger than latest document version");
+        
+    return success({"newVersion": body["newVersion"], "oldVersion": body["oldVersion"], "deltas": doc.Item["documentDeltas"].slice(body["oldVersion"],body["newVersion"]) });
+}
+
+const broadcastMessage = async(connectionId, body) => {
+    if(!body.hasOwnProperty("message")) return error("No message")
+    
+    const user =  await ddbClient.get({
+        TableName: "shared-docs-users",
+        Key: { 'connectionId': connectionId },
+        ProjectionExpression: "documentName"
+    }).promise();
+    
+    if(user === undefined || user.Item === undefined || user.Item["documentName"] == undefined)
+        return error("Not in a document");
+    
+    const doc = await ddbClient.get({
+        TableName: "shared-docs-documents",
+        Key: { 'documentName': user.Item["documentName"] },
+        ProjectionExpression: ["documentUsers"]
+    }).promise();
+    
+    let otherUsers = doc.Item["documentUsers"].values;
+    const senderIndex = otherUsers.indexOf(connectionId);
+    if (senderIndex > -1) otherUsers.splice(senderIndex, 1);
+    
+    console.log(otherUsers)
+    await sendToMany(otherUsers, { "action": "newBroadcast", "statusCode": 200, "body": JSON.stringify({ "message": body["message"], "connectionId":connectionId }) })
+    console.log("SENT")
+    
     return undefined;
 }
 
@@ -259,6 +321,12 @@ const defaultHandler = async(connectionId, body) => {
         case "addDelta":
             documentResult = await addDelta(connectionId, body);
             break;
+        case "getDeltas":
+            documentResult = await getDeltas(connectionId, body);
+            break;
+        case "sendBroadcast":
+            documentResult = await broadcastMessage(connectionId, body);
+            break;
         default:
             return error("Invalid action");
     }
@@ -273,7 +341,7 @@ const defaultHandler = async(connectionId, body) => {
 }
 
 exports.handler = async (event) => {
-    LOG(event.requestContext)
+    LOG(event)
     
     if(!event.requestContext) return error("No context")
     
