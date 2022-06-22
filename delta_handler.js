@@ -141,10 +141,10 @@ function composeDocumentOnJoin(statusCode, body){
     }
     else{
         if(latestDelta - newVersion <= 100){
-            AWS.call("getDeltas", { "oldVersion": newVersion+1, "newVersion": latestDelta})
+            AWS.call("getDeltas", { "oldVersion": newVersion, "newVersion": latestDelta})
         }
         else{
-            AWS.call("getDeltas"),{"oldVersion": newVersion+1, "newVersion": (newVersion+1)+99}
+            AWS.call("getDeltas"),{"oldVersion": newVersion, "newVersion": (newVersion+100)}
         }
     }
 }
@@ -159,7 +159,7 @@ function joinDocumentHandler(statusCode, body)
         AWS.call("getDeltas", { "oldVersion": 0, "newVersion": latestDelta })
     }
     else{
-        AWS.call("getDeltas", { "oldVersion": 0, "newVersion": 99})
+        AWS.call("getDeltas", { "oldVersion": 0, "newVersion": 100})
     }
 
     // TODO handle more than 100 deltas
