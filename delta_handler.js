@@ -1,14 +1,13 @@
+let Delta = Quill.import('delta');
+
 let syncedVersion = 0;
 let allDeltas = [];
 
 //Should have the document up to allDeltas[syncedVersion]
-let syncedDocument = new Quill.imports.delta();
+let syncedDocument = new Delta();
 
-
-let syncedDelta = undefined;
 let pendingDelta = undefined;
 let blockedDelta = undefined;
-
 
 let errorAlert = document.getElementById("errorAlert");
 let alertTimeout = undefined;
@@ -133,11 +132,6 @@ function newDeltaHandler(statusCode, body)
     let deltaVersion = body["version"];
     while(deltaVersion >= allDeltas.length) allDeltas.push(undefined); // Fill it with empty deltas till we reach the correct size
 
-    // console.warn(syncedDelta)
-    // syncedDelta = syncedDelta.compose(JSON.parse(delta))
-    // quill.setContents(syncedDelta, 'silent'); // Invert to the common, agreed-upon document
-    // // quill.updateContents(new Quill.imports.delta(JSON.parse(delta)), 'silent'); // Apply the newly received delta
-    // console.warn(syncedDelta)
 
     if(deltaVersion < syncedVersion) // How did we receive a delta twice?
         console.error("UNEXPECTED CASE", syncedVersion, deltaVersion, pendingDeltaVersion, isOwn, delta, pendingDelta, allDeltas)
@@ -188,63 +182,22 @@ function newDeltaHandler(statusCode, body)
                 blockedDelta = undefined;
             }
 
+            let parsedDelta = new Delta(JSON.parse(delta));
             allDeltas[deltaVersion] = delta;
             syncedVersion++;
 
-            // CHECK FOR         // Out of order receipt of deltas (might happen in the case of different execution times of the lambda functions) IF THE PREVIOUS DELTAS WILL WORK
+            // CHECK FOR
+            // Out of order receipt of deltas (might happen in the case of different execution times of the lambda functions) IF THE PREVIOUS DELTAS WILL WORK
 
-            syncedDocument = syncedDocument.compose(JSON.parse(allDeltas[deltaVersion]));
+            let magicDelta = pendingDelta.invert(syncedDocument);
+            magicDelta = magicDelta.compose(parsedDelta);
+
+            pendingDelta = parsedDelta.transform(pendingDelta, true);
+            magicDelta = magicDelta.compose(pendingDelta)
+            quill.updateContents(magicDelta);
+
+            syncedDocument = syncedDocument.compose(parsedDelta);
             
-            // UNCOMMENT THE NEXT BLOCK IF SYNCEDDOCUMENT DOESN'T WORK
-            // let newdoc = new Quill.imports.delta({});
-            // for(let i = 0; i < syncedVersion; i++)
-            //     newdoc = newdoc.compose(new Quill.imports.delta(JSON.parse(allDeltas[i])))
-            // console.log(newdoc)
-            // END BLOCK
-
-
-            // syncedDelta = syncedDelta.compose(parsedDelta)
-            let selection = quill.getSelection(); // TODO transform this
-            // console.warn(syncedDelta)
-            
-            quill.setContents(syncedDocument,'silent');
-            //quill.updateContents(new Delta().retain(quill.getSelection().index));
-
-            // UNCOMMENT THIS IF IT ALL GOES WRONG
-            //quill.setContents(newdoc, 'silent'); // Update the document in the user's view
-
-
-            // syncedDelta = new Quill.imports.delta(syncedDelta);
-
-            // console.warn(pendingDelta)
-            let parsedDelta = new Quill.imports.delta(JSON.parse(delta));
-            //console.log(parsedDelta)
-            console.log("Length: " + selection.length +" Index: " + selection.index)
-            //selection.index = parsedDelta.transformPosition(selection.index, false);
-
-            quill.setSelection(selection);
-
-            pendingDelta = parsedDelta.transform(pendingDelta, true); // Transform the previously made (unsynced) changes
-            // console.warn(pendingDelta)
-            quill.updateContents(pendingDelta, 'silent'); // Update to the (transformed) changes we previously made
-
-            // quill.updateContents(pendingDelta.invert(quill.getContents()), 'silent'); // Invert to the common, agreed-upon document
-            // console.log(syncedDelta)
-            // console.warn(syncedDelta)
-            // console.warn(syncedDelta)
-            // syncedDelta = new Quill.imports.delta(delta).compose(delta)
-            // quill.setContents(syncedDelta, 'silent'); // Invert to the common, agreed-upon document
-            // // console.warn(syncedDelta)
-            // // quill.updateContents(delta, 'silent'); // Apply the newly received delta
-            // console.warn(syncedDelta)
-
-            // syncedDelta = new Quill.imports.delta(quill.getContents());
-
-            // console.log(pendingDelta)
-            // pendingDelta = new Quill.imports.delta(JSON.parse(delta)).transform(pendingDelta, true); // Transform the previously made (unsynced) changes
-            // console.log(pendingDelta)
-            // quill.updateContents(pendingDelta, 'silent'); // Update to the (transformed) changes we previously made
-
             // Send the transformed delta
             AWS.call("addDelta", { "documentVersion": syncedVersion, "delta": JSON.stringify(pendingDelta) })
         }
@@ -255,34 +208,15 @@ function newDeltaHandler(statusCode, body)
         for(let i = syncedVersion; i < allDeltas.length; i++)
             if(allDeltas[i] !== undefined) // TODO test this
             {
+                let parsedDelta = new Delta(JSON.parse(delta));
+
                 console.warn(`Handling out-of-order delta version ${i}`)
-                quill.updateContents(JSON.parse(allDeltas[i]), 'silent');
+                quill.updateContents(parsedDelta, 'silent');
                 syncedVersion++;
 
+                syncedDocument = syncedDocument.compose(parsedDelta);
                 syncedDelta = quill.getContents();
             }
-
-        // if(pendingDeltaVersion == undefined || (pendingDeltaVersion === deltaVersion && isOwn === true))
-        // {
-        //     // The very normal case w/o any races
-        //     allDeltas[deltaVersion] = delta;
-        //     syncedVersion++;
-        //     pendingDeltaVersion = undefined;
-    
-        //     if(!isOwn) quill.updateContents(JSON.parse(allDeltas[deltaVersion]), 'silent');
-        // }
-        // else if(pendingDeltaVersion === deltaVersion)
-        // {
-        //     // Someone beat us to it, we need to transform our deltas and resend
-        // }
-        // else if(pendingDeltaVersion < deltaVersion)
-        // {
-        //     // Out of order receipt
-        // }
-        // else if(pendingDeltaVersion > deltaVersion) // How did we send a delta to a version we never received?
-        //     console.error("UNEXPECTED CASE", syncedVersion, deltaVersion, pendingDeltaVersion, isOwn, delta, pendingDelta, allDeltas)
-        // else // ???
-        //     console.error("UNEXPECTED CASE", syncedVersion, deltaVersion, pendingDeltaVersion, isOwn, delta, pendingDelta, allDeltas)
     }
     else // ???
         console.error("UNEXPECTED CASE", syncedVersion, deltaVersion, pendingDeltaVersion, isOwn, delta, pendingDelta, allDeltas)

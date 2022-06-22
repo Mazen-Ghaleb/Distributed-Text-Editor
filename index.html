@@ -9,7 +9,7 @@
   </head>
   <body>
     <!-- Include stylesheet -->
-    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet" />
+    <link href="https://cdn.quilljs.com/2.0.0-dev.4/quill.snow.css" rel="stylesheet"/>
 
     <div class="alert" style="display: none">
       <span class="closebtn" style="display: block" onclick="this.parentElement.style.display='none';">&times;</span>
@@ -28,9 +28,6 @@
         <h3>Open Existing Document:</h3>
         <label for="documentSelect">Document Name: </label>
         <select name="documentSelect" id="documentSelect"></select>
-
-        <!-- <input type="button" value="Refresh" onclick="updateDocuments()" /> -->
-
         <br />
         <input type="submit" value="Open" />
       </form>
@@ -48,26 +45,42 @@
       </form>
     </div>
 
-    <!-- <script>var exports = {};</script> -->
     <!-- Include the Quill library -->
-    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
-
-    <!-- <script type="module" src="./delta/delta.bundle.js"></script> -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/quill-delta@5.0.0/dist/Delta.min.js"></script> -->
-
+    <script src="https://cdn.quilljs.com/2.0.0-dev.4/quill.js"></script>
     <script src="./remote.js"></script>
     <script src="./delta_handler.js"></script>
     <script>
       function updateDocuments() {
         AWS.call('listDocuments');
-        //document.getElementById('documentSelect').innerHTML = '';
       }
       var SelectionInterval = setInterval(updateDocuments, 5000);
     </script>
 
     <!-- Initialize Quill editor -->
     <script>
+      var toolbarOptions = [
+        ['bold', 'italic', 'underline', 'strike'],        // toggled buttons
+        ['blockquote', 'code-block'],
+
+        [{ 'header': 1 }, { 'header': 2 }],               // custom button values
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'script': 'sub'}, { 'script': 'super' }],      // superscript/subscript
+        [{ 'indent': '-1'}, { 'indent': '+1' }],          // outdent/indent
+        [{ 'direction': 'rtl' }],                         // text direction
+
+        [{ 'size': ['small', false, 'large', 'huge'] }],  // custom dropdown
+        [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+        [ 'link', 'image', 'video', 'formula' ],          // add's image support
+        [{ 'color': [] }, { 'background': [] }],          // dropdown with defaults from theme
+        [{ 'font': [] }],
+        [{ 'align': [] }],
+
+        ['clean']                                         // remove formatting button
+      ];
       var quill = new Quill('#editor', {
+        modules: {
+          toolbar: toolbarOptions
+        },
         placeholder: 'Your document is empty...',
         theme: 'snow',
       });
