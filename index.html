@@ -9,7 +9,7 @@
   </head>
   <body>
     <!-- Include stylesheet -->
-    <link href="https://cdn.quilljs.com/2.0.0-dev.4/quill.snow.css" rel="stylesheet"/>
+    <link href="https://cdn.quilljs.com/2.0.0-dev.4/quill.snow.css" rel="stylesheet" />
 
     <div class="alert" style="display: none">
       <span class="closebtn" style="display: block" onclick="this.parentElement.style.display='none';">&times;</span>
@@ -47,6 +47,51 @@
 
     <!-- Include the Quill library -->
     <script src="https://cdn.quilljs.com/2.0.0-dev.4/quill.js"></script>
+
+    <!-- Initialize Quill editor -->
+    <script type="module">
+      import * as QuillCursors from 'https://cdn.jsdelivr.net/npm/quill-cursors@3.1.2/dist/quill-cursors.js';
+      var script = document.createElement('script');
+      script.innerHTML = `var toolbarOptions = [
+      ['bold', 'italic', 'underline', 'strike'], // toggled buttons
+      ['blockquote', 'code-block'],
+
+      [{ header: 1 }, { header: 2 }], // custom button values
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      [{ script: 'sub' }, { script: 'super' }], // superscript/subscript
+      [{ indent: '-1' }, { indent: '+1' }], // outdent/indent
+      [{ direction: 'rtl' }], // text direction
+
+      [{ size: ['small', false, 'large', 'huge'] }], // custom dropdown
+      [{ header: [1, 2, 3, 4, 5, 6, false] }],
+      ['link', 'image', 'video', 'formula'], // add's image support
+      [{ color: [] }, { background: [] }], // dropdown with defaults from theme
+      [{ font: [] }],
+      [{ align: [] }],
+
+      ['clean'], // remove formatting button
+    ];
+    
+    Quill.register('modules/cursors', QuillCursors);
+
+    var quill = new Quill('#editor', {
+      modules: {
+        toolbar: toolbarOptions,
+        cursors: true,
+      },
+      placeholder: 'Your document is empty...',
+      theme: 'snow',
+    });
+    quill.on('text-change', window.textChangeHandler);
+
+    const cursorManager = quill.getModule('cursors');
+    //cursorManager.options.hideDelayMs = 0;
+    //cursorManager.options.hideSpeedMs = 0;
+    var userCounter = 0;
+    var userDict = {};`;
+      document.body.appendChild(script);
+      console.log('sucess');
+    </script>
     <script src="./remote.js"></script>
     <script src="./delta_handler.js"></script>
     <script>
@@ -54,37 +99,6 @@
         AWS.call('listDocuments');
       }
       var SelectionInterval = setInterval(updateDocuments, 5000);
-    </script>
-
-    <!-- Initialize Quill editor -->
-    <script>
-      var toolbarOptions = [
-        ['bold', 'italic', 'underline', 'strike'],        // toggled buttons
-        ['blockquote', 'code-block'],
-
-        [{ 'header': 1 }, { 'header': 2 }],               // custom button values
-        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-        [{ 'script': 'sub'}, { 'script': 'super' }],      // superscript/subscript
-        [{ 'indent': '-1'}, { 'indent': '+1' }],          // outdent/indent
-        [{ 'direction': 'rtl' }],                         // text direction
-
-        [{ 'size': ['small', false, 'large', 'huge'] }],  // custom dropdown
-        [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-        [ 'link', 'image', 'video', 'formula' ],          // add's image support
-        [{ 'color': [] }, { 'background': [] }],          // dropdown with defaults from theme
-        [{ 'font': [] }],
-        [{ 'align': [] }],
-
-        ['clean']                                         // remove formatting button
-      ];
-      var quill = new Quill('#editor', {
-        modules: {
-          toolbar: toolbarOptions
-        },
-        placeholder: 'Your document is empty...',
-        theme: 'snow',
-      });
-      quill.on('text-change', window.textChangeHandler);
     </script>
   </body>
 </html>

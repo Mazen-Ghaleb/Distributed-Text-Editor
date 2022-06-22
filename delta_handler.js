@@ -21,6 +21,70 @@ let latestDelta = 0;
 let documentSelect = document.getElementById("documentSelect");
 let documentName = document.getElementById("documentName");
 
+function Cursor(type, index ,length) {
+    this.type = type;
+    this.index = index;
+    this.length = length;
+}
+
+function sendCursorChanges() {
+    quill.on('selection-change', function(range, oldRange, source) {
+    if (range) {
+        let cursor;
+          if (range.length == 0) {
+            // User cursor is on index
+            cursor = new Cursor("atIndex", range.index, range.length);
+            AWS.call("sendBroadcast", { "message": JSON.stringify(cursor)})
+          } else {
+             // User has highlighted
+            cursor = new Cursor("highlight", range.index, range.length);
+            AWS.call("sendBroadcast", { "message": JSON.stringify(cursor)})
+          }}
+           else {
+             // Cursor not in the editor
+            cursor = new Cursor("notInDocument", range.index, range.length);
+            AWS.call("sendBroadcast", { "message": JSON.stringify(cursor)})
+        }
+    });
+}
+
+function generateRandomColor() {
+    var letters = '0123456789ABCDEF';
+    var color = '#';
+    for (var i = 0; i < 6; i++) {
+      color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
+  }
+
+function newBroadcastHandler(statusCode, body)
+  {
+      
+      let newCursor = JSON.parse(body["message"]);
+      let id = body["connectionId"];
+      console.log(newCursor , userDict, id)
+  
+      if (!(id in userDict)){
+          userCounter++;
+          userDict[id] = "User "+userCounter;
+      }
+      cursorManager.createCursor(id, userDict[id], generateRandomColor()); //Creates cursor if doesn't exist
+      //cursorManager.setCursor(id, userDict[id], generateRandomColor()); //Creates cursor if doesn't exist
+  
+      cursorManager.toggleFlag(id, true);
+  
+      if (newCursor.type ==="atIndex") {
+          cursorManager.moveCursor(id,{'index':newCursor.index,'length':newCursor.length});
+      }
+      else if (newCursor.type ==="highlight") {
+          cursorManager.moveCursor(id,{'index':newCursor.index,'length':newCursor.length});
+      }
+      else if (newCursor.type ==="notInDocument"){
+          cursorManager.removeCursor(id);
+      }
+      cursorManager.update();
+  }
+
 function alertTimeoutHandler()
 {
     console.log("alertTimeoutHandler")
@@ -57,7 +121,7 @@ function openDocumentHandler()
 
     AWS.call("joinDocument", { "documentName": documentSelect.value });
     clearInterval(SelectionInterval);
-
+    sendCursorChanges();
     return false;
 }
 
@@ -71,6 +135,7 @@ function createDocumentHandler()
     
     AWS.call("newDocument", { "documentName": documentName.value });
     clearInterval(SelectionInterval);
+    sendCursorChanges();
     return false;
 }
 
@@ -124,8 +189,6 @@ function composeDocumentOnJoin(statusCode, body){
     newVersion = body["newVersion"];
     oldVersion = body["oldVersion"];
     deltas = body["deltas"];
-    
-
 
     for (const delta of deltas){
         loadedDocument = loadedDocument.compose(JSON.parse(delta));
@@ -137,7 +200,6 @@ function composeDocumentOnJoin(statusCode, body){
         documentsUI.style.display = "none"
         syncedVersion = latestDelta;
         quill.setContents(loadedDocument,'silent');
-        
     }
     else{
         if(latestDelta - newVersion <= 100){
@@ -154,8 +216,13 @@ function joinDocumentHandler(statusCode, body)
     loadedDocument = new Delta();
     latestDelta = parseInt(body['documentVersion']);
 
-
-    if (latestDelta<100){
+    if (latestDelta == 0){
+        alertSuccess("Opened document");
+        editUI.style.display = "block";
+        documentsUI.style.display = "none";
+        return false;
+    }
+    else if (latestDelta<100){
         AWS.call("getDeltas", { "oldVersion": 0, "newVersion": latestDelta })
     }
     else{
@@ -293,6 +360,9 @@ function messageHandler(message)
             break;
         case "getDeltas":
             composeDocumentOnJoin(statusCode,body);
+            break;
+        case "newBroadcast":
+            newBroadcastHandler(statusCode, body);
             break;
         default:
             console.error(`Unknown Action \"${message.action}\"`)
