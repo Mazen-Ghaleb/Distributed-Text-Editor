@@ -27,8 +27,8 @@ function Cursor(type, index ,length) {
     this.length = length;
 }
 
-function sendCursorChanges() {
-    quill.on('selection-change', function(range, oldRange, source) {
+function updateMyCursors() {
+    var range = quill.getSelection();
     if (range) {
         let cursor;
           if (range.length == 0) {
@@ -45,7 +45,12 @@ function sendCursorChanges() {
             cursor = new Cursor("notInDocument", range.index, range.length);
             AWS.call("sendBroadcast", { "message": JSON.stringify(cursor)})
         }
-    });
+}
+
+function sendCursorChanges() {
+    //quill.on('editor-change',  function(eventName, ...args)  {
+        updateMyCursors();
+    //});
 }
 
 function generateRandomColor() {
@@ -307,6 +312,7 @@ function newDeltaHandler(statusCode, body)
             pendingDelta = undefined;
 
             syncedDocument = syncedDocument.compose(JSON.parse(allDeltas[deltaVersion]));
+            updateMyCursors();
 
 
             if(blockedDelta !== undefined)
@@ -343,6 +349,8 @@ function newDeltaHandler(statusCode, body)
             quill.updateContents(magicDelta);
 
             syncedDocument = syncedDocument.compose(parsedDelta);
+            updateMyCursors();
+
             
             // Send the transformed delta
             AWS.call("addDelta", { "documentVersion": syncedVersion, "delta": JSON.stringify(pendingDelta) })
@@ -361,6 +369,7 @@ function newDeltaHandler(statusCode, body)
                 syncedVersion++;
 
                 syncedDocument = syncedDocument.compose(parsedDelta);
+                updateMyCursors();
                 syncedDelta = quill.getContents();
             }
     }

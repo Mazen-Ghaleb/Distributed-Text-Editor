@@ -101,9 +101,7 @@
     var quill = new Quill('#editor', {
       modules: {
         toolbar: toolbarOptions,
-        cursors: {
-          transformOnTextChange: true,
-        },
+        cursors: true,
       },
       placeholder: 'Your document is empty...',
       theme: 'snow',
@@ -111,7 +109,7 @@
     quill.on('text-change', window.textChangeHandler);
 
     const cursorManager = quill.getModule('cursors');
-    //cursorManager.options.hideDelayMs = 0;
+    cursorManager.options.transformOnTextChange = true;
     //cursorManager.options.hideSpeedMs = 0;
     var userCounter = 0;
     var userDict = {};`;
