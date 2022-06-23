@@ -111,15 +111,16 @@ function alertSuccess(message)
     errorAlert.parentElement.style.backgroundColor = "green";
 }
 
-function openDocumentHandler()
+function openDocumentHandler(elm)
 {
-    if(documentSelect.value === "")
-    {
-        alertError("No existing documents to open")
-        return false;
-    }
-
-    AWS.call("joinDocument", { "documentName": documentSelect.value });
+    documentName = elm.getAttribute('value');
+    // if(documentSelect.value === "")
+    // {
+    //     alertError("No existing documents to open")
+    //     return false;
+    // }
+    console.log(documentName)
+    AWS.call("joinDocument", { "documentName": documentName });
     clearInterval(SelectionInterval);
     sendCursorChanges();
     return false;
@@ -158,31 +159,62 @@ function newDocumentHandler(statusCode, body)
     documentsUI.style.display = "none";
 }
 
+function generateCardsForAllDocuments(documents) {
+    if (currentDocumentCards !== documents) {
+        //get div with id cardsDiv
+        let cardsDiv = document.getElementById("documentsCardsDiv");
+        cardsDiv.innerHTML = "";
+        //loop through all documents
+        for (const doc of documents){
+            docDate = doc.documentDate.substring(5,16).split(' ');
+            displayedDate = docDate[1] +" "+ docDate[0]+ ", " + docDate[2];
+            cardsDiv.innerHTML += `
+            <div class="card" style="width:16em; height: 16m; margin-top: 10px; margin-bottom: 10px;display: inline-block;">
+            <!-- Replace image with iframe later -->
+            <a href='javascript:;' onclick="openDocumentHandler(this);" value="${doc.documentName}">
+            <img id="cardDocumentImage"class="card-img-top" alt="Document" src="./document.png">
+            </a>
+            <div class="card-body">
+            <h5 id="card" class="card-title">${doc.documentName}</h5>
+            <div style="display: inline-block;">
+            
+            <p id="cardDate" class="card-text" style="display: inline-block;"><img id="cardDocumentIcon" alt="Document" src="./document.png" style="height:2; width:2em; display: inline-block;">${displayedDate}</p>
+            </div>
+            <br>
+            </div>
+        </div>
+        `
+        }
+        currentDocumentCards = documents;
+    }
+}
+
 function listDocumentsHandler(statusCode, body)
 {
-    var isNotSameDoc = false;
-    for(const doc in body["documents"])
-    {
-        let documentName = body["documents"][doc]["documentName"];
-        if (documentSelect.innerHTML !== `<option value=\"${documentName}\">${documentName}</option>`){
-            isNotSameDoc = true;
-            break;
-        }
-    }
+    generateCardsForAllDocuments(body["documents"]);
+    // var isNotSameDoc = false;
+    // for(const doc in body["documents"])
+    // {
+    //     let documentName = body["documents"][doc]["documentName"];
+    //     if (documentSelect.innerHTML !== `<option value=\"${documentName}\">${documentName}</option>`){
+    //         isNotSameDoc = true;
+    //         break;
+    //     }
+    // }
     
-    if (isNotSameDoc) {
-        documentSelect.innerHTML = "";
-        let sortArr = [];
-        for(const doc in body["documents"])
-        {
-            let documentName = body["documents"][doc]["documentName"];
-            sortArr.push(documentName)
-        }
-        sortArr.sort((a, b) => a.localeCompare(b))
-        for (var i =0; i<sortArr.length;i++){
-            documentSelect.innerHTML += `<option value=\"${sortArr[i]}\">${sortArr[i]}</option>`;
-        }
-    }
+    // if (isNotSameDoc) {
+    //     documentSelect.innerHTML = "";
+    //     let sortArr = [];
+    //     for(const doc in body["documents"])
+    //     {
+    //         let documentName = body["documents"][doc]["documentName"];
+    //         sortArr.push(documentName)
+    //     }
+    //     sortArr.sort((a, b) => a.localeCompare(b))
+    //     for (var i =0; i<sortArr.length;i++){
+    //         documentSelect.innerHTML += `<option value=\"${sortArr[i]}\">${sortArr[i]}</option>`;
+    //     }
+    // }
 }
 
 function composeDocumentOnJoin(statusCode, body){
