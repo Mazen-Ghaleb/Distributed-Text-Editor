@@ -5,7 +5,6 @@ let allDeltas = [];
 
 //Should have the document up to allDeltas[syncedVersion]
 let syncedDocument = new Delta();
-let loadedDocument = new Delta();
 
 let pendingDelta = undefined;
 let blockedDelta = undefined;
@@ -21,33 +20,38 @@ let latestDelta = 0;
 let documentSelect = document.getElementById("documentSelect");
 let documentName = document.getElementById("documentName");
 
-function Cursor(type, index ,length) {
+let cursorInterval = undefined;
+
+function Cursor(type, index, length) {
     this.type = type;
     this.index = index;
     this.length = length;
+    this.documentVersion = syncedVersion;
 }
 
 function updateMyCursors() {
     var range = quill.getSelection();
     if (range) {
         let cursor;
-          if (range.length == 0) {
+        if (range.length == 0) {
             // User cursor is on index
             cursor = new Cursor("atIndex", range.index, range.length);
             AWS.call("sendBroadcast", { "message": JSON.stringify(cursor)})
-          } else {
-             // User has highlighted
+        } else {
+            // User has highlighted
             cursor = new Cursor("highlight", range.index, range.length);
             AWS.call("sendBroadcast", { "message": JSON.stringify(cursor)})
-          }}
-           else {
-             // Cursor not in the editor
-            cursor = new Cursor("notInDocument", range.index, range.length);
-            AWS.call("sendBroadcast", { "message": JSON.stringify(cursor)})
         }
+    }
+    else {
+        // Cursor not in the editor
+        cursor = new Cursor("notInDocument");
+        AWS.call("sendBroadcast", { "message": JSON.stringify(cursor)})
+    }
 }
 
 function sendCursorChanges() {
+    console.log("sendCursorChanges")
     //quill.on('editor-change',  function(eventName, ...args)  {
         updateMyCursors();
     //});
@@ -60,35 +64,37 @@ function generateRandomColor() {
       color += letters[Math.floor(Math.random() * 16)];
     }
     return color;
-  }
+}
 
 function newBroadcastHandler(statusCode, body)
-  {
-      
-      let newCursor = JSON.parse(body["message"]);
-      let id = body["connectionId"];
-      console.log(newCursor , userDict, id)
-  
-      if (!(id in userDict)){
-          userCounter++;
-          userDict[id] = "User "+userCounter;
-      }
-      cursorManager.createCursor(id, userDict[id], generateRandomColor()); //Creates cursor if doesn't exist
-      //cursorManager.setCursor(id, userDict[id], generateRandomColor()); //Creates cursor if doesn't exist
-  
-      cursorManager.toggleFlag(id, true);
-  
-      if (newCursor.type ==="atIndex") {
-          cursorManager.moveCursor(id,{'index':newCursor.index,'length':newCursor.length});
-      }
-      else if (newCursor.type ==="highlight") {
-          cursorManager.moveCursor(id,{'index':newCursor.index,'length':newCursor.length});
-      }
-      else if (newCursor.type ==="notInDocument"){
-          cursorManager.removeCursor(id);
-      }
-      cursorManager.update();
-  }
+{
+    let newCursor = JSON.parse(body["message"]);
+    let id = body["connectionId"];
+    console.log(newCursor , userDict, id)
+
+    if (!(id in userDict)){
+        userCounter++;
+        userDict[id] = "User "+userCounter;
+    }
+    cursorManager.createCursor(id, userDict[id], generateRandomColor()); //Creates cursor if doesn't exist
+    //cursorManager.setCursor(id, userDict[id], generateRandomColor()); //Creates cursor if doesn't exist
+
+    cursorManager.toggleFlag(id, true);
+
+    if(newCursor.documentVersion === syncedVersion && pendingDelta === undefined)
+    {
+        if (newCursor.type ==="atIndex") {
+            cursorManager.moveCursor(id,{'index':newCursor.index,'length':newCursor.length});
+        }
+        else if (newCursor.type ==="highlight") {
+            cursorManager.moveCursor(id,{'index':newCursor.index,'length':newCursor.length});
+        }
+        else if (newCursor.type ==="notInDocument"){
+            cursorManager.removeCursor(id);
+        }
+        cursorManager.update();
+    }
+}
 
 function alertTimeoutHandler()
 {
@@ -118,7 +124,12 @@ function alertSuccess(message)
 
 function openDocumentHandler(elm)
 {
+    documentsUI.style.display = "none";
     documentName = elm.getAttribute('value');
+
+    // editUI.style.display = "block";
+    // documentsUI.style.display = "none";
+
     // if(documentSelect.value === "")
     // {
     //     alertError("No existing documents to open")
@@ -127,12 +138,13 @@ function openDocumentHandler(elm)
     console.log(documentName)
     AWS.call("joinDocument", { "documentName": documentName });
     clearInterval(SelectionInterval);
-    sendCursorChanges();
+
     return false;
 }
 
 function createDocumentHandler()
 {
+    documentsUI.style.display = "none";
     if(documentName.value === "")
     {
         alertError("Please enter the new document's name")
@@ -141,7 +153,6 @@ function createDocumentHandler()
     
     AWS.call("newDocument", { "documentName": documentName.value });
     clearInterval(SelectionInterval);
-    sendCursorChanges();
     return false;
 }
 
@@ -161,7 +172,6 @@ function newDocumentHandler(statusCode, body)
 
     alertSuccess("Document created");
     editUI.style.display = "block";
-    documentsUI.style.display = "none";
 }
 
 function generateCardsForAllDocuments(documents) {
@@ -227,16 +237,36 @@ function composeDocumentOnJoin(statusCode, body){
     oldVersion = body["oldVersion"];
     deltas = body["deltas"];
 
-    for (const delta of deltas){
-        loadedDocument = loadedDocument.compose(JSON.parse(delta));
+    while(newVersion > allDeltas.length) allDeltas.push(undefined);
+
+    for (const delta in deltas){
+        syncedDocument = syncedDocument.compose(JSON.parse(deltas[delta]));
+        allDeltas[oldVersion + delta] = deltas[delta];
+        syncedVersion++;
     }
 
     if (newVersion === latestDelta){
         alertSuccess("Opened document");
         editUI.style.display = "block";
-        documentsUI.style.display = "none"
-        syncedVersion = latestDelta;
-        quill.setContents(loadedDocument,'silent');
+
+        if(cursorInterval === undefined)
+            (function(){
+                sendCursorChanges();
+                setTimeout(arguments.callee, 500);
+            })();
+
+        // Handle any outstanding out-of-order deltas
+        for(let i = syncedVersion; i < allDeltas.length; i++)
+        {
+            if(allDeltas[i] === undefined) break;
+            console.warn(`Handling out-of-order delta version ${i} after document load`)
+            allDeltas[i] = allDeltas[i]["delta"]
+
+            syncedDocument = syncedDocument.compose(JSON.parse(allDeltas[i]));
+            syncedVersion++;
+        }
+        
+        quill.setContents(syncedDocument,'silent');
     }
     else{
         if(latestDelta - newVersion <= 100){
@@ -250,13 +280,20 @@ function composeDocumentOnJoin(statusCode, body){
 
 function joinDocumentHandler(statusCode, body)
 {
-    loadedDocument = new Delta();
+    syncedDocument = new Delta();
     latestDelta = parseInt(body['documentVersion']);
 
     if (latestDelta == 0){
         alertSuccess("Opened document");
         editUI.style.display = "block";
         documentsUI.style.display = "none";
+
+        if(cursorInterval === undefined)
+            (function(){
+                sendCursorChanges();
+                setTimeout(arguments.callee, 500);
+            })();
+
         return false;
     }
     else if (latestDelta<100){
@@ -266,115 +303,110 @@ function joinDocumentHandler(statusCode, body)
         AWS.call("getDeltas", { "oldVersion": 0, "newVersion": 100})
     }
 
-    // TODO handle more than 100 deltas
+    sendCursorChanges();
+}
 
+function inOrderDeltaHandler(delta, isOwn, silent)
+{
+    let parsedDelta = new Delta(JSON.parse(delta));
+    // for(let i = syncedVersion; i < allDeltas.length; i++)
+    // {
+    //     if(allDeltas[i] === undefined) break;
+    //     parsedDelta = parsedDelta.compose(JSON.parse(allDeltas[i]))
+        
+    //     syncedVersion++;
+    //     deltaVersion++;
+    // }
+    
+    if(pendingDelta === undefined)
+    {
+        // The very normal case w/o any races: We didn't send anything, and we received a new delta
+        syncedDocument = syncedDocument.compose(parsedDelta);
+        quill.updateContents(parsedDelta, 'silent');
+    }
+    else if(isOwn === true)
+    {
+        // The very normal case w/o any races: We sent a delta, and we received that delta
+        pendingDelta = undefined;
+        syncedDocument = syncedDocument.compose(parsedDelta);
 
-    // UNCOMMENT IF EVERYTHING GOES WRONG
-    // alertSuccess("Opened document");
-    // editUI.style.display = "block";
-    // documentsUI.style.display = "none";   
+        if(blockedDelta !== undefined)
+        {
+            pendingDelta = blockedDelta;
+            blockedDelta = undefined;
+
+            if(silent !== true)
+                AWS.call("addDelta", { "documentVersion": syncedVersion, "delta": JSON.stringify(pendingDelta) })
+        }
+    }
+    else if(isOwn === false)
+    {
+        // Someone beat us to it, we need to transform our deltas and resend
+        console.warn(`Race condition on delta version ${syncedVersion}`)
+
+        // Merge all the unsynced changes we have
+        if(blockedDelta !== undefined)
+        {
+            pendingDelta = pendingDelta.compose(blockedDelta);
+            blockedDelta = undefined;
+        }
+
+        // CHECK FOR
+        // Out of order receipt of deltas (might happen in the case of different execution times of the lambda functions) IF THE PREVIOUS DELTAS WILL WORK
+        let magicDelta = pendingDelta.invert(syncedDocument);
+        magicDelta = magicDelta.compose(parsedDelta);
+
+        pendingDelta = parsedDelta.transform(pendingDelta, true);
+        magicDelta = magicDelta.compose(pendingDelta)
+        quill.updateContents(magicDelta);
+
+        syncedDocument = syncedDocument.compose(parsedDelta);
+        
+        // Send the transformed delta
+        if(silent !== true)
+            AWS.call("addDelta", { "documentVersion": syncedVersion, "delta": JSON.stringify(pendingDelta) })
+    }
+    else
+        console.error("UNEXPECTED CASE", syncedVersion, isOwn, delta, pendingDelta, allDeltas)
+
+    // if(silent !== true)
+    //     updateMyCursors();
 }
 
 function newDeltaHandler(statusCode, body)
 {
-    
     let delta = body["delta"];
     let isOwn = body["isOwn"];
     let deltaVersion = body["version"];
     while(deltaVersion >= allDeltas.length) allDeltas.push(undefined); // Fill it with empty deltas till we reach the correct size
 
-
     if(deltaVersion < syncedVersion) // How did we receive a delta twice?
-        console.error("UNEXPECTED CASE", syncedVersion, deltaVersion, pendingDeltaVersion, isOwn, delta, pendingDelta, allDeltas)
+        console.error("UNEXPECTED CASE", syncedVersion, deltaVersion, isOwn, delta, pendingDelta, allDeltas)
     else if(deltaVersion > syncedVersion)
     {
         // Out of order receipt of deltas (might happen in the case of different execution times of the lambda functions)
         console.warn(`Out-of-order delta version ${deltaVersion} (expected ${syncedVersion})`)
 
-        allDeltas[deltaVersion] = delta;
+        allDeltas[deltaVersion] = body;
     }
     else if(deltaVersion === syncedVersion)
     {
-        if(pendingDelta === undefined)
-        {
-            // The very normal case w/o any races: We didn't send anything, and we received a new delta
-            allDeltas[syncedVersion] = delta;
-            syncedVersion++;
-            pendingDelta = undefined;
-            syncedDocument = syncedDocument.compose(JSON.parse(allDeltas[deltaVersion]));
-            quill.updateContents(JSON.parse(allDeltas[deltaVersion]), 'silent');
-        }
-        else if(isOwn === true)
-        {
-            // The very normal case w/o any races: We sent a delta, and we received that delta
-            allDeltas[syncedVersion] = delta;
-            syncedVersion++;
-            pendingDelta = undefined;
+        allDeltas[deltaVersion] = body;
 
-            syncedDocument = syncedDocument.compose(JSON.parse(allDeltas[deltaVersion]));
-            updateMyCursors();
-
-
-            if(blockedDelta !== undefined)
-            {
-                pendingDelta = blockedDelta;
-                AWS.call("addDelta", { "documentVersion": syncedVersion, "delta": JSON.stringify(pendingDelta) })
-                blockedDelta = undefined;
-            }
-        }
-        else if(isOwn === false)
-        {
-            // Someone beat us to it, we need to transform our deltas and resend
-            console.warn(`Race condition on delta version ${deltaVersion}`)
-
-            // Merge all the unsynced changes we have
-            if(blockedDelta !== undefined)
-            {
-                pendingDelta = pendingDelta.compose(blockedDelta);
-                blockedDelta = undefined;
-            }
-
-            let parsedDelta = new Delta(JSON.parse(delta));
-            allDeltas[deltaVersion] = delta;
-            syncedVersion++;
-
-            // CHECK FOR
-            // Out of order receipt of deltas (might happen in the case of different execution times of the lambda functions) IF THE PREVIOUS DELTAS WILL WORK
-
-            let magicDelta = pendingDelta.invert(syncedDocument);
-            magicDelta = magicDelta.compose(parsedDelta);
-
-            pendingDelta = parsedDelta.transform(pendingDelta, true);
-            magicDelta = magicDelta.compose(pendingDelta)
-            quill.updateContents(magicDelta);
-
-            syncedDocument = syncedDocument.compose(parsedDelta);
-            updateMyCursors();
-
-            
-            // Send the transformed delta
-            AWS.call("addDelta", { "documentVersion": syncedVersion, "delta": JSON.stringify(pendingDelta) })
-        }
-        else
-            console.error("UNEXPECTED CASE", syncedVersion, deltaVersion, pendingDeltaVersion, isOwn, delta, pendingDelta, allDeltas)
-
-        // Handle any outstanding out-of-order deltas
         for(let i = syncedVersion; i < allDeltas.length; i++)
-            if(allDeltas[i] !== undefined) // TODO test this
-            {
-                let parsedDelta = new Delta(JSON.parse(delta));
+        {
+            console.log(syncedVersion);
+            if(allDeltas[i] === undefined) break;
+            syncedVersion++;
 
-                console.warn(`Handling out-of-order delta version ${i}`)
-                quill.updateContents(parsedDelta, 'silent');
-                syncedVersion++;
+            let silent = i < allDeltas.length - 1 && allDeltas[i+1] !== undefined;
+            inOrderDeltaHandler(allDeltas[i]["delta"], allDeltas[i]["isOwn"], silent);
 
-                syncedDocument = syncedDocument.compose(parsedDelta);
-                updateMyCursors();
-                syncedDelta = quill.getContents();
-            }
+            allDeltas[i] = allDeltas[i]["delta"];
+        }
     }
     else // ???
-        console.error("UNEXPECTED CASE", syncedVersion, deltaVersion, pendingDeltaVersion, isOwn, delta, pendingDelta, allDeltas)
+        console.error("UNEXPECTED CASE", syncedVersion, deltaVersion, isOwn, delta, pendingDelta, allDeltas)
 }
 
 function messageHandler(message)
@@ -423,7 +455,8 @@ function textChangeHandler(delta, oldDelta, source) {
         if(pendingDelta === undefined)
         {
             pendingDelta = delta;
-            AWS.call("addDelta", { "documentVersion": syncedVersion, "delta": JSON.stringify(pendingDelta) })
+            AWS.call("addDelta", { "documentVersion": syncedVersion, "message": "TEST MESSAGE", "delta": JSON.stringify(pendingDelta) })
+            
         }
         else if(blockedDelta === undefined)
             blockedDelta = delta;
