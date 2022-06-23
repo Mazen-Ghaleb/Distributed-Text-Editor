@@ -4,7 +4,8 @@ const WS_ENDPOINT = "osh89asdcb.execute-api.eu-central-1.amazonaws.com/productio
 const ddbClient = new AWS.DynamoDB.DocumentClient();
 const wsClient = new AWS.ApiGatewayManagementApi({ endpoint: WS_ENDPOINT });
 
-const LOG = async(value) => { console.log(new Error().stack + "\n\n" + JSON.stringify(value)); return value; }
+// const LOG = async(value) => { console.log(new Error().stack + "\n\n" + JSON.stringify(value)); return value; }
+const LOG = async(value) => { return value; } // Don't log 3ashan mesh 3ayez 2adfa3 feloos CloudWatch, ty.
 
 const error = async(message) => { return LOG({ statusCode: 400, body: message }); }
 const success = async(response) => { return LOG({ statusCode: 200, body: JSON.stringify(response) }); }
@@ -77,6 +78,7 @@ const newDocument = async(connectionId, body) => {
                 "documentVersion": 0,
                 "documentDeltas": [],
                 "documentUsers": ddbClient.createSet([connectionId]),
+                "documentDate": new Date().toUTCString(),
             },
             ConditionExpression:"attribute_not_exists(documentName)",
         }).promise();
@@ -110,7 +112,7 @@ const newDocument = async(connectionId, body) => {
 const listDocuments = async(connectionId, body) => {
     const scanResult = await ddbClient.scan({
         TableName : "shared-docs-documents",
-        ProjectionExpression: "documentName"
+        ProjectionExpression: ["documentName", "documentVersion", "documentDate"]
     }).promise();
     return success({"documents" : scanResult["Items"]})
 }
@@ -124,11 +126,12 @@ const joinDocument = async(connectionId, body) => {
     }).promise();
     if(!doc.Item) return error("Invalid documentName")
     
-    await ddbClient.update({
+    const updatedDoc = await ddbClient.update({
         TableName: "shared-docs-documents",
         Key: { 'documentName': body.documentName },
         UpdateExpression: "ADD documentUsers :u",
         ExpressionAttributeValues: { ':u': ddbClient.createSet(connectionId) },
+        ReturnValues: 'ALL_OLD'
     }).promise();
     
     const old = await ddbClient.update({
@@ -138,7 +141,7 @@ const joinDocument = async(connectionId, body) => {
         ExpressionAttributeValues: { ':u': body.documentName },
         ReturnValues: 'ALL_OLD'
     }).promise();
-    if(!old.Attributes.hasOwnProperty("documentName") || old.Attributes["documentName"] == body.documentName) return success({ "documentVersion": doc.Item["documentVersion"] })
+    if(!old.Attributes.hasOwnProperty("documentName") || old.Attributes["documentName"] == body.documentName) return success({ "documentVersion": updatedDoc.Attributes["documentVersion"] })
     
     await ddbClient.update({
         TableName: "shared-docs-documents",
@@ -186,6 +189,7 @@ const joinDocument = async(connectionId, body) => {
 const addDelta = async(connectionId, body) => {
     if(!body.hasOwnProperty("documentVersion")) return error("No documentVersion")
     if(!body.hasOwnProperty("delta")) return error("No delta")
+    // if(!body.hasOwnProperty("message")) return error("No message")
     
     const user =  await ddbClient.get({
         TableName: "shared-docs-users",
@@ -219,7 +223,7 @@ const addDelta = async(connectionId, body) => {
             ProjectionExpression: ["documentVersion", "documentUsers"]
         }).promise();
         
-        let newDeltaBody = { "delta": body["delta"], "version": body["documentVersion"], "isOwn": false };
+        let newDeltaBody = { "delta": body["delta"], "message": body["message"], "version": body["documentVersion"], "isOwn": false, "connectionId":connectionId };
         let newDelta = { "action": "newDelta", "statusCode": 200, "body": JSON.stringify(newDeltaBody) };
         
         let otherUsers = doc.Item["documentUsers"].values;
