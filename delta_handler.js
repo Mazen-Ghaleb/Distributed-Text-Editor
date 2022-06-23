@@ -238,7 +238,7 @@ function composeDocumentOnJoin(statusCode, body){
             AWS.call("getDeltas", { "oldVersion": newVersion, "newVersion": latestDelta})
         }
         else{
-            AWS.call("getDeltas"),{"oldVersion": newVersion, "newVersion": (newVersion+100)}
+            AWS.call("getDeltas", {"oldVersion": newVersion, "newVersion": (newVersion+100)})
         }
     }
 }
