@@ -31,10 +31,12 @@
     <link href="https://cdn.quilljs.com/2.0.0-dev.4/quill.snow.css" rel="stylesheet" />
     <script>
       document.IS_INDEX = true;
+      document.NOT_SORT_DATE = true;
       //function iframeRedirect(link) {
       //console.log('here');
       //window.location.assign(link);
       //}
+      let currentDocumentSort = false;
       let currentDocumentCards;
       let allDocuments = [];
     </script>
@@ -54,7 +56,38 @@
 
     <div id="documents">
       <!-- <form onsubmit="return openDocumentHandler(this)"> -->
-      <h3>Open Existing Document:</h3>
+      <h3 style="display: inline">Open Existing Document:</h3>
+      <div class="dropdown">
+        <button
+          class="btn btn-secondary dropdown-toggle"
+          type="button"
+          id="dropdownMenuButton"
+          data-toggle="dropdown"
+          aria-haspopup="true"
+          aria-expanded="false"
+        >
+          Sort
+        </button>
+        <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+          <a
+            class="dropdown-item"
+            href="javascript:;"
+            onclick="document.NOT_SORT_DATE = true; generateCardsForAllDocuments(allDocuments);"
+            ;
+            value="name"
+            ;
+            >Name</a
+          >
+          <a
+            class="dropdown-item"
+            href="javascript:;"
+            onclick="document.NOT_SORT_DATE = false; generateCardsForAllDocuments(allDocuments);"
+            ;
+            value="date"
+            >Date</a
+          >
+        </div>
+      </div>
       <div id="documentsCardsDiv"></div>
       <!-- <label for="documentSelect">Document Name: </label>
         <select name="documentSelect" id="documentSelect"></select>

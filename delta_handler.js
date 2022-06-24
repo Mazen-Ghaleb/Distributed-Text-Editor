@@ -40,7 +40,7 @@ function getMyCursor() {
         } else {
             // User has highlighted
             cursor = new Cursor("highlight", range.index, range.length);
-           // AWS.call("sendBroadcast", { "message": JSON.stringify(cursor)})
+            // AWS.call("sendBroadcast", { "message": JSON.stringify(cursor)})
         }
     }
     else {
@@ -52,15 +52,15 @@ function getMyCursor() {
 }
 
 function sendCursorChanges() {
-    if(!document.IS_IFRAME){
-    console.log("sendCursorChanges")
+    if (!document.IS_IFRAME) {
+        console.log("sendCursorChanges")
     }
     // quill.on('selection-change',  function(eventName, ...args)  {
     //     if (range && range.length !== 0) {
     //         getMyCursor
     //     }
-    
-    AWS.call("sendBroadcast", { "message": JSON.stringify(getMyCursor())})
+
+    AWS.call("sendBroadcast", { "message": JSON.stringify(getMyCursor()) })
     //});
 }
 
@@ -68,64 +68,60 @@ function generateRandomColor() {
     var letters = '0123456789ABCDEF';
     var color = '#';
     for (var i = 0; i < 6; i++) {
-      color += letters[Math.floor(Math.random() * 16)];
+        color += letters[Math.floor(Math.random() * 16)];
     }
     return color;
 }
 
-function newBroadcastHandler(statusCode, body, newCursor = null)
-{
+function newBroadcastHandler(statusCode, body, newCursor = null) {
     let ver;
-    if (newCursor === null){
+    if (newCursor === null) {
         newCursor = JSON.parse(body["message"]);
         ver = newCursor.documentVersion;
     }
     else {
         ver = body["version"];
-        if(!document.IS_IFRAME){
-        console.log (newCursor)
+        if (!document.IS_IFRAME) {
+            console.log(newCursor)
         }
     }
 
     let id = body["connectionId"];
-    if(!document.IS_IFRAME){
-    console.log(newCursor , userDict, id)
+    if (!document.IS_IFRAME) {
+        console.log(newCursor, userDict, id)
     }
 
-    if (!(id in userDict)){
+    if (!(id in userDict)) {
         userCounter++;
-        userDict[id] = "User "+userCounter;
+        userDict[id] = "User " + userCounter;
     }
     cursorManager.createCursor(id, userDict[id], generateRandomColor()); //Creates cursor if doesn't exist
 
     cursorManager.toggleFlag(id, true);
 
-    if(ver === syncedVersion && pendingDelta === undefined)
-    {
-        if (newCursor.type ==="atIndex") {
-            cursorManager.moveCursor(id,{'index':newCursor.index,'length':newCursor.length});
+    if (ver === syncedVersion && pendingDelta === undefined) {
+        if (newCursor.type === "atIndex") {
+            cursorManager.moveCursor(id, { 'index': newCursor.index, 'length': newCursor.length });
         }
-        else if (newCursor.type ==="highlight") {
-            cursorManager.moveCursor(id,{'index':newCursor.index,'length':newCursor.length});
-       }
-        else if (newCursor.type ==="notInDocument"){
+        else if (newCursor.type === "highlight") {
+            cursorManager.moveCursor(id, { 'index': newCursor.index, 'length': newCursor.length });
+        }
+        else if (newCursor.type === "notInDocument") {
             cursorManager.removeCursor(id);
         }
         cursorManager.update();
     }
 }
 
-function alertTimeoutHandler()
-{
-    if(!document.IS_IFRAME){
-    console.log("alertTimeoutHandler")
+function alertTimeoutHandler() {
+    if (!document.IS_IFRAME) {
+        console.log("alertTimeoutHandler")
     }
     errorAlert.parentElement.style.display = "none";
 }
 
-function alertError(message)
-{
-    if(alertTimeout) clearTimeout(alertTimeout);
+function alertError(message) {
+    if (alertTimeout) clearTimeout(alertTimeout);
     alertTimeout = setTimeout(alertTimeoutHandler, 4000)
 
     errorAlert.innerText = message;
@@ -133,9 +129,8 @@ function alertError(message)
     errorAlert.parentElement.style.backgroundColor = "red";
 }
 
-function alertSuccess(message)
-{
-    if(alertTimeout) clearTimeout(alertTimeout);
+function alertSuccess(message) {
+    if (alertTimeout) clearTimeout(alertTimeout);
     alertTimeout = setTimeout(alertTimeoutHandler, 4000)
 
     errorAlert.innerText = message;
@@ -143,9 +138,8 @@ function alertSuccess(message)
     errorAlert.parentElement.style.backgroundColor = "green";
 }
 
-function openDocumentHandler(documentName)
-{
-    
+function openDocumentHandler(documentName) {
+
     //documentName = elm.getAttribute('value');
 
     // editUI.style.display = "block";
@@ -168,47 +162,42 @@ function openDocumentHandler(documentName)
     //     return allDocuments[key]["documentName"].indexOf(documentName) > -1;
     // }))
 
-    if ((Object.keys(allDocuments).map(function(key){
+    if ((Object.keys(allDocuments).map(function (key) {
         return allDocuments[key]["documentName"].indexOf(documentName) != -1;
-         }))) {
+    }))) {
         documentsUI.style.display = "none";
         //console.log(documentName)
         AWS.call("joinDocument", { "documentName": documentName });
-        if(document.IS_INDEX)
+        if (document.IS_INDEX)
             clearInterval(SelectionInterval);
-        }
+    }
     else {
         alertError("Document name doesn't exist")
     }
     return false;
 }
 
-function createDocumentHandler()
-{
+function createDocumentHandler() {
     documentsUI.style.display = "none";
-    if(documentName.value === "")
-    {
+    if (documentName.value === "") {
         alertError("Please enter the new document's name")
         return false;
     }
-    
+
     AWS.call("newDocument", { "documentName": documentName.value });
     clearInterval(SelectionInterval);
     return false;
 }
 
-function openHandler()
-{
-    if(!document.IS_IFRAME){
-    console.log("open")
+function openHandler() {
+    if (!document.IS_IFRAME) {
+        console.log("open")
     }
     AWS.call("listDocuments")
 }
 
-function newDocumentHandler(statusCode, body)
-{
-    if(statusCode !== 200)
-    {
+function newDocumentHandler(statusCode, body) {
+    if (statusCode !== 200) {
         alertError("Could not create document: " + body);
         return;
     }
@@ -223,9 +212,9 @@ function generateCardsForAllDocuments(documents) {
         let cardsDiv = document.getElementById("documentsCardsDiv");
         cardsDiv.innerHTML = "";
         //loop through all documents
-        for (const doc of documents){
-            docDate = doc.documentDate.substring(5,16).split(' ');
-            displayedDate = docDate[1] +" "+ docDate[0]+ ", " + docDate[2];
+        for (const doc of documents) {
+            docDate = doc.documentDate.substring(5, 16).split(' ');
+            displayedDate = docDate[1] + " " + docDate[0] + ", " + docDate[2];
             cardsDiv.innerHTML += `
             <div class="card" style="width:16em; height: 16m; margin-top: 10px; margin-bottom: 10px;display: inline-block;">
                 <iframe src="./document.html?iframe=y?doc=${doc.documentName}" scrolling="no" style="overflow:hidden; width:100%; height:100%;border:none;" title="${doc.documentName}"></iframe> 
@@ -257,18 +246,34 @@ function generateCardsForAllDocuments(documents) {
     }
 }
 
-function listDocumentsHandler(statusCode, body)
-{
-    if(document.IS_INDEX) {
+function listDocumentsHandler(statusCode, body) {
+    if (document.IS_INDEX) {
         // console.log (allDocuments)
         // console.log (body["documents"])
         // console.log (JSON.stringify(allDocuments)==JSON.stringify(body["documents"]))
-        if (!(JSON.stringify(allDocuments)==JSON.stringify(body["documents"]))){
+        //console.log( allDocuments.filter(o1 => body["documents"].some(o2 => o1.documentName === o2.documentName)).length === body["documents"].length);
+        if (!document.NOT_SORT_DATE) {
+            console.log(body["documents"].sort(function (a, b) { return new Date(b.documentDate) - new Date(a.documentDate)}))
+            body["documents"].sort(function (a, b) { return new Date(b.documentDate) - new Date(a.documentDate)});
+            if (currentDocumentSort === false){
+                generateCardsForAllDocuments(body["documents"]);
+                currentDocumentSort = true;
+            }
+        }
+        else {
+            body["documents"].sort(function (a, b) { return a.documentName.localeCompare(b.documentName) });
+            if (currentDocumentSort === true){
+                generateCardsForAllDocuments(body["documents"]);
+                currentDocumentSort = false;
+            }
+        }
+        if (!(allDocuments.filter(o1 => body["documents"].some(o2 => o1.documentName === o2.documentName)).length === body["documents"].length)) {
+            //console.log(body["documents"]);
             generateCardsForAllDocuments(body["documents"]);
             allDocuments = body["documents"];
         }
     }
-    else if (document.IS_DOC){
+    else if (document.IS_DOC) {
         allDocuments = body["documents"];
         var script = document.createElement('script');
         script.innerHTML = `openDocumentHandler(decodeURI(location.href.split('doc=')[1]));`
@@ -280,7 +285,7 @@ function listDocumentsHandler(statusCode, body)
         script.innerHTML = `openDocumentHandler(decodeURI(location.href.split('doc=')[1]));`
         document.body.appendChild(script);
     }
-    else  {
+    else {
         allDocuments = body["documents"];
     }
     // var isNotSameDoc = false;
@@ -292,7 +297,7 @@ function listDocumentsHandler(statusCode, body)
     //         break;
     //     }
     // }
-    
+
     // if (isNotSameDoc) {
     //     documentSelect.innerHTML = "";
     //     let sortArr = [];
@@ -308,133 +313,125 @@ function listDocumentsHandler(statusCode, body)
     // }
 }
 
-function composeDocumentOnJoin(statusCode, body){
+function composeDocumentOnJoin(statusCode, body) {
     newVersion = body["newVersion"];
     oldVersion = body["oldVersion"];
     deltas = body["deltas"];
 
-    while(newVersion > allDeltas.length) allDeltas.push(undefined);
+    while (newVersion > allDeltas.length) allDeltas.push(undefined);
 
-    for (const delta in deltas){
+    for (const delta in deltas) {
         syncedDocument = syncedDocument.compose(JSON.parse(deltas[delta]));
         allDeltas[oldVersion + delta] = deltas[delta];
         syncedVersion++;
     }
 
-    if (newVersion === latestDelta){
-        
-        if(!document.IS_IFRAME){
-        alertSuccess("Opened document");
+    if (newVersion === latestDelta) {
+
+        if (!document.IS_IFRAME) {
+            alertSuccess("Opened document");
         }
         editUI.style.display = "block";
 
-        if(cursorInterval === undefined)
-            (function(){
-                if(!document.IS_IFRAME){
-                sendCursorChanges();
-                setTimeout(arguments.callee, 500);
+        if (cursorInterval === undefined)
+            (function () {
+                if (!document.IS_IFRAME) {
+                    sendCursorChanges();
+                    setTimeout(arguments.callee, 500);
                 }
             })();
 
         // Handle any outstanding out-of-order deltas
-        for(let i = syncedVersion; i < allDeltas.length; i++)
-        {
-            if(allDeltas[i] === undefined) break;
+        for (let i = syncedVersion; i < allDeltas.length; i++) {
+            if (allDeltas[i] === undefined) break;
             console.warn(`Handling out-of-order delta version ${i} after document load`)
             allDeltas[i] = allDeltas[i]["delta"]
 
             syncedDocument = syncedDocument.compose(JSON.parse(allDeltas[i]));
             syncedVersion++;
         }
-        
-        quill.setContents(syncedDocument,'silent');
+
+        quill.setContents(syncedDocument, 'silent');
     }
-    else{
-        if(latestDelta - newVersion <= 100){
-            AWS.call("getDeltas", { "oldVersion": newVersion, "newVersion": latestDelta})
+    else {
+        if (latestDelta - newVersion <= 100) {
+            AWS.call("getDeltas", { "oldVersion": newVersion, "newVersion": latestDelta })
         }
-        else{
-            AWS.call("getDeltas", {"oldVersion": newVersion, "newVersion": (newVersion+100)})
+        else {
+            AWS.call("getDeltas", { "oldVersion": newVersion, "newVersion": (newVersion + 100) })
         }
     }
 }
 
-function joinDocumentHandler(statusCode, body)
-{
+function joinDocumentHandler(statusCode, body) {
     syncedDocument = new Delta();
     latestDelta = parseInt(body['documentVersion']);
 
-    if (latestDelta == 0){
-        if(!document.IS_IFRAME){
-        alertSuccess("Opened document");
+    if (latestDelta == 0) {
+        if (!document.IS_IFRAME) {
+            alertSuccess("Opened document");
         }
         editUI.style.display = "block";
         documentsUI.style.display = "none";
 
-        if(cursorInterval === undefined)
-            (function(){
-                if(!document.IS_IFRAME){
-                sendCursorChanges();
-                setTimeout(arguments.callee, 500);
+        if (cursorInterval === undefined)
+            (function () {
+                if (!document.IS_IFRAME) {
+                    sendCursorChanges();
+                    setTimeout(arguments.callee, 500);
                 }
             })();
 
         return false;
     }
-    else if (latestDelta<100){
+    else if (latestDelta < 100) {
         AWS.call("getDeltas", { "oldVersion": 0, "newVersion": latestDelta })
     }
-    else{
-        AWS.call("getDeltas", { "oldVersion": 0, "newVersion": 100})
+    else {
+        AWS.call("getDeltas", { "oldVersion": 0, "newVersion": 100 })
     }
-    if(!document.IS_IFRAME){
-    sendCursorChanges();
+    if (!document.IS_IFRAME) {
+        sendCursorChanges();
     }
 }
 
-function inOrderDeltaHandler(delta, isOwn, silent)
-{
+function inOrderDeltaHandler(delta, isOwn, silent) {
     let parsedDelta = new Delta(JSON.parse(delta));
     // for(let i = syncedVersion; i < allDeltas.length; i++)
     // {
     //     if(allDeltas[i] === undefined) break;
     //     parsedDelta = parsedDelta.compose(JSON.parse(allDeltas[i]))
-        
+
     //     syncedVersion++;
     //     deltaVersion++;
     // }
-    
-    if(pendingDelta === undefined)
-    {
+
+    if (pendingDelta === undefined) {
         // The very normal case w/o any races: We didn't send anything, and we received a new delta
         syncedDocument = syncedDocument.compose(parsedDelta);
         quill.updateContents(parsedDelta, 'silent');
     }
-    else if(isOwn === true)
-    {
+    else if (isOwn === true) {
         // The very normal case w/o any races: We sent a delta, and we received that delta
         pendingDelta = undefined;
         syncedDocument = syncedDocument.compose(parsedDelta);
 
-        if(blockedDelta !== undefined)
-        {
+        if (blockedDelta !== undefined) {
             pendingDelta = blockedDelta;
             blockedDelta = undefined;
 
-            if(silent !== true)
+            if (silent !== true)
                 //AWS.call("addDelta", { "documentVersion": syncedVersion, "delta": JSON.stringify(pendingDelta) })
                 AWS.call("addDelta", { "documentVersion": syncedVersion, "message": JSON.stringify(getMyCursor()), "delta": JSON.stringify(pendingDelta) })
 
         }
     }
-    else if(isOwn === false)
-    {
+    else if (isOwn === false) {
         // Someone beat us to it, we need to transform our deltas and resend
         console.warn(`Race condition on delta version ${syncedVersion}`)
 
         // Merge all the unsynced changes we have
-        if(blockedDelta !== undefined)
-        {
+        if (blockedDelta !== undefined) {
             pendingDelta = pendingDelta.compose(blockedDelta);
             blockedDelta = undefined;
         }
@@ -449,9 +446,9 @@ function inOrderDeltaHandler(delta, isOwn, silent)
         quill.updateContents(magicDelta);
 
         syncedDocument = syncedDocument.compose(parsedDelta);
-        
+
         // Send the transformed delta
-        if(silent !== true)
+        if (silent !== true)
             //AWS.call("addDelta", { "documentVersion": syncedVersion, "delta": JSON.stringify(pendingDelta) })
             AWS.call("addDelta", { "documentVersion": syncedVersion, "message": JSON.stringify(getMyCursor()), "delta": JSON.stringify(pendingDelta) })
 
@@ -463,40 +460,37 @@ function inOrderDeltaHandler(delta, isOwn, silent)
     //     sendCursorChanges();
 }
 
-function newDeltaHandler(statusCode, body)
-{
+function newDeltaHandler(statusCode, body) {
     let delta = body["delta"];
     let isOwn = body["isOwn"];
     let deltaVersion = body["version"];
     let newCursor = JSON.parse(body["message"]);
 
     if (!isOwn) {
-        newBroadcastHandler(statusCode,body,newCursor);
+        newBroadcastHandler(statusCode, body, newCursor);
     }
 
-    while(deltaVersion >= allDeltas.length) allDeltas.push(undefined); // Fill it with empty deltas till we reach the correct size
+    while (deltaVersion >= allDeltas.length) allDeltas.push(undefined); // Fill it with empty deltas till we reach the correct size
 
-    if(deltaVersion < syncedVersion) // How did we receive a delta twice?
+    if (deltaVersion < syncedVersion) // How did we receive a delta twice?
         console.error("UNEXPECTED CASE", syncedVersion, deltaVersion, isOwn, delta, pendingDelta, allDeltas)
-    else if(deltaVersion > syncedVersion)
-    {
+    else if (deltaVersion > syncedVersion) {
         // Out of order receipt of deltas (might happen in the case of different execution times of the lambda functions)
         console.warn(`Out-of-order delta version ${deltaVersion} (expected ${syncedVersion})`)
 
         allDeltas[deltaVersion] = body;
     }
-    else if(deltaVersion === syncedVersion)
-    {
+    else if (deltaVersion === syncedVersion) {
         allDeltas[deltaVersion] = body;
 
-        for(let i = syncedVersion; i < allDeltas.length; i++)
-        {
-            if(!document.IS_IFRAME){
-            console.log(syncedVersion);}
-            if(allDeltas[i] === undefined) break;
+        for (let i = syncedVersion; i < allDeltas.length; i++) {
+            if (!document.IS_IFRAME) {
+                console.log(syncedVersion);
+            }
+            if (allDeltas[i] === undefined) break;
             syncedVersion++;
 
-            let silent = i < allDeltas.length - 1 && allDeltas[i+1] !== undefined;
+            let silent = i < allDeltas.length - 1 && allDeltas[i + 1] !== undefined;
             inOrderDeltaHandler(allDeltas[i]["delta"], allDeltas[i]["isOwn"], silent);
 
             allDeltas[i] = allDeltas[i]["delta"];
@@ -506,16 +500,14 @@ function newDeltaHandler(statusCode, body)
         console.error("UNEXPECTED CASE", syncedVersion, deltaVersion, isOwn, delta, pendingDelta, allDeltas)
 }
 
-function messageHandler(message)
-{
+function messageHandler(message) {
     let statusCode = message.statusCode;
     let body = message.body;
 
-    if(statusCode === 400) console.error(message)
+    if (statusCode === 400) console.error(message)
     else body = JSON.parse(body);
-     
-    switch(message.action)
-    {
+
+    switch (message.action) {
         case "newDocument":
             newDocumentHandler(statusCode, body);
             break;
@@ -529,7 +521,7 @@ function messageHandler(message)
             newDeltaHandler(statusCode, body);
             break;
         case "getDeltas":
-            composeDocumentOnJoin(statusCode,body);
+            composeDocumentOnJoin(statusCode, body);
             break;
         case "newBroadcast":
             newBroadcastHandler(statusCode, body);
@@ -549,13 +541,12 @@ function textChangeHandler(delta, oldDelta, source) {
         // console.log(delta);
 
         // console.log(JSON.stringify({delta, "version":7}))
-        if(pendingDelta === undefined)
-        {
+        if (pendingDelta === undefined) {
             pendingDelta = delta;
             AWS.call("addDelta", { "documentVersion": syncedVersion, "message": JSON.stringify(getMyCursor()), "delta": JSON.stringify(pendingDelta) })
-            
+
         }
-        else if(blockedDelta === undefined)
+        else if (blockedDelta === undefined)
             blockedDelta = delta;
         else
             blockedDelta = blockedDelta.compose(delta);
@@ -563,7 +554,7 @@ function textChangeHandler(delta, oldDelta, source) {
 }
 
 /*function mazenVersioning(documentName,version){
-    
+
     // open document but passes version and c
     //join doc
 
