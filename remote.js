@@ -24,7 +24,8 @@ function Remote(openHandler, messageHandler)
             // event.code is usually 1006 in this case
             console.log('[close] Connection died'); 
             
-            setTimeout("location.reload(true);",5000); // Refresh page after 5 seconds
+            // Re-Open new socket after 5 seconds
+            //setTimeout(function () {this = new Remote(openHandler, messageHandler)},5000);
 
         }
     };

@@ -29,31 +29,36 @@ function Cursor(type, index, length) {
     this.documentVersion = syncedVersion;
 }
 
-function updateMyCursors() {
-    var range = quill.getSelection();
+function getMyCursor() {
+    let range = quill.getSelection();
+    let cursor;
     if (range) {
-        let cursor;
         if (range.length == 0) {
             // User cursor is on index
             cursor = new Cursor("atIndex", range.index, range.length);
-            AWS.call("sendBroadcast", { "message": JSON.stringify(cursor)})
+            //AWS.call("sendBroadcast", { "message": JSON.stringify(cursor)})
         } else {
             // User has highlighted
             cursor = new Cursor("highlight", range.index, range.length);
-            AWS.call("sendBroadcast", { "message": JSON.stringify(cursor)})
+           // AWS.call("sendBroadcast", { "message": JSON.stringify(cursor)})
         }
     }
     else {
         // Cursor not in the editor
         cursor = new Cursor("notInDocument");
-        AWS.call("sendBroadcast", { "message": JSON.stringify(cursor)})
+        //AWS.call("sendBroadcast", { "message": JSON.stringify(cursor)})
     }
+    return cursor;
 }
 
 function sendCursorChanges() {
     console.log("sendCursorChanges")
-    //quill.on('editor-change',  function(eventName, ...args)  {
-        updateMyCursors();
+    // quill.on('selection-change',  function(eventName, ...args)  {
+    //     if (range && range.length !== 0) {
+    //         getMyCursor
+    //     }
+    
+    AWS.call("sendBroadcast", { "message": JSON.stringify(getMyCursor())})
     //});
 }
 
@@ -66,9 +71,18 @@ function generateRandomColor() {
     return color;
 }
 
-function newBroadcastHandler(statusCode, body)
+function newBroadcastHandler(statusCode, body, newCursor = null)
 {
-    let newCursor = JSON.parse(body["message"]);
+    let ver;
+    if (newCursor === null){
+        newCursor = JSON.parse(body["message"]);
+        ver = newCursor.documentVersion;
+    }
+    else {
+        ver = body["version"];
+        console.log (newCursor)
+    }
+
     let id = body["connectionId"];
     console.log(newCursor , userDict, id)
 
@@ -77,18 +91,17 @@ function newBroadcastHandler(statusCode, body)
         userDict[id] = "User "+userCounter;
     }
     cursorManager.createCursor(id, userDict[id], generateRandomColor()); //Creates cursor if doesn't exist
-    //cursorManager.setCursor(id, userDict[id], generateRandomColor()); //Creates cursor if doesn't exist
 
     cursorManager.toggleFlag(id, true);
 
-    if(newCursor.documentVersion === syncedVersion && pendingDelta === undefined)
+    if(ver === syncedVersion && pendingDelta === undefined)
     {
         if (newCursor.type ==="atIndex") {
             cursorManager.moveCursor(id,{'index':newCursor.index,'length':newCursor.length});
         }
         else if (newCursor.type ==="highlight") {
             cursorManager.moveCursor(id,{'index':newCursor.index,'length':newCursor.length});
-        }
+       }
         else if (newCursor.type ==="notInDocument"){
             cursorManager.removeCursor(id);
         }
@@ -336,7 +349,9 @@ function inOrderDeltaHandler(delta, isOwn, silent)
             blockedDelta = undefined;
 
             if(silent !== true)
-                AWS.call("addDelta", { "documentVersion": syncedVersion, "delta": JSON.stringify(pendingDelta) })
+                //AWS.call("addDelta", { "documentVersion": syncedVersion, "delta": JSON.stringify(pendingDelta) })
+                AWS.call("addDelta", { "documentVersion": syncedVersion, "message": JSON.stringify(getMyCursor()), "delta": JSON.stringify(pendingDelta) })
+
         }
     }
     else if(isOwn === false)
@@ -364,13 +379,15 @@ function inOrderDeltaHandler(delta, isOwn, silent)
         
         // Send the transformed delta
         if(silent !== true)
-            AWS.call("addDelta", { "documentVersion": syncedVersion, "delta": JSON.stringify(pendingDelta) })
+            //AWS.call("addDelta", { "documentVersion": syncedVersion, "delta": JSON.stringify(pendingDelta) })
+            AWS.call("addDelta", { "documentVersion": syncedVersion, "message": JSON.stringify(getMyCursor()), "delta": JSON.stringify(pendingDelta) })
+
     }
     else
         console.error("UNEXPECTED CASE", syncedVersion, isOwn, delta, pendingDelta, allDeltas)
 
     // if(silent !== true)
-    //     updateMyCursors();
+    //     sendCursorChanges();
 }
 
 function newDeltaHandler(statusCode, body)
@@ -378,6 +395,12 @@ function newDeltaHandler(statusCode, body)
     let delta = body["delta"];
     let isOwn = body["isOwn"];
     let deltaVersion = body["version"];
+    let newCursor = JSON.parse(body["message"]);
+
+    if (!isOwn) {
+        newBroadcastHandler(statusCode,body,newCursor);
+    }
+
     while(deltaVersion >= allDeltas.length) allDeltas.push(undefined); // Fill it with empty deltas till we reach the correct size
 
     if(deltaVersion < syncedVersion) // How did we receive a delta twice?
@@ -455,7 +478,7 @@ function textChangeHandler(delta, oldDelta, source) {
         if(pendingDelta === undefined)
         {
             pendingDelta = delta;
-            AWS.call("addDelta", { "documentVersion": syncedVersion, "message": "TEST MESSAGE", "delta": JSON.stringify(pendingDelta) })
+            AWS.call("addDelta", { "documentVersion": syncedVersion, "message": JSON.stringify(getMyCursor()), "delta": JSON.stringify(pendingDelta) })
             
         }
         else if(blockedDelta === undefined)
