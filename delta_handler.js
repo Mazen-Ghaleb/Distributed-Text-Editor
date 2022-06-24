@@ -206,7 +206,19 @@ function generateCardsForAllDocuments(documents) {
             <h5 id="card" class="card-title">${doc.documentName}</h5>
             <div style="display: inline-block;">
             
-            <p id="cardDate" class="card-text" style="display: inline-block;"><img id="cardDocumentIcon" alt="Document" src="./document.png" style="height:2; width:2em; display: inline-block;">${displayedDate}</p>
+            <p id="cardDate" class="card-text" style="display: inline-block;"><img id="cardDocumentIcon" alt="Document" src="./document.png" style="height:2; width:2em; display: inline-block;">${displayedDate} <!-- Default dropup button -->
+            <div class="btn-group dropup">
+              <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                Dropup
+              </button>
+              <div class="dropdown-menu">
+                <!-- Dropdown menu links -->
+                <a class="dropdown-item" href="./revert.html">Revert Version</a>
+                <a class="dropdown-item" href="#">Rename</a>
+                <a class="dropdown-item" href="#">Delete</a>
+              </div>
+            </div>            
+            </p>
             </div>
             <br>
             </div>
@@ -488,5 +500,14 @@ function textChangeHandler(delta, oldDelta, source) {
     }
 }
 
+/*function mazenVersioning(documentName,version){
+    
+    // open document but passes version and c
+    //join doc
+
+    //get the deltas
+    AWS.call("getDeltas")
+}
+*/
 const AWS = new Remote(openHandler, messageHandler);
 window.textChangeHandler = textChangeHandler;
