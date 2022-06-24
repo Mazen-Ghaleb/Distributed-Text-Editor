@@ -201,8 +201,9 @@ function newDocumentHandler(statusCode, body) {
         alertError("Could not create document: " + body);
         return;
     }
-
+console.log(body);
     alertSuccess("Document created");
+    window.location.assign(pathRoot+'/views/document.html?doc='+ documentName.value)
     editUI.style.display = "block";
 }
 
@@ -217,20 +218,20 @@ function generateCardsForAllDocuments(documents) {
             displayedDate = docDate[1] + " " + docDate[0] + ", " + docDate[2];
             cardsDiv.innerHTML += `
             <div class="card" style="width:16em; height: 16m; margin-top: 10px; margin-bottom: 10px;display: inline-block;">
-                <iframe src="./document.html?iframe=y?doc=${doc.documentName}" scrolling="no" style="overflow:hidden; width:100%; height:100%;border:none;" title="${doc.documentName}"></iframe> 
+                <iframe src="${pathRoot}/views/document.html?iframe=y?doc=${doc.documentName}" scrolling="no" style="overflow:hidden; width:100%; height:100%;border:none;" title="${doc.documentName}"></iframe> 
                 <div class="card-body">
-                    <a href='./document.html?doc=${doc.documentName}'>
+                    <a href='${pathRoot}/views/document.html?doc=${doc.documentName}'>
                         <h5 id="card" class="card-title">${doc.documentName}</h5>
                     </a>
                     <div style="display: inline-block;">
-                        <p id="cardDate" class="card-text" style="display: inline-block;"><img id="cardDocumentIcon" alt="Document" src="./document.png" style="height:2; width:2em; display: inline-block;">${displayedDate} <!-- Default dropup button -->
+                        <p id="cardDate" class="card-text" style="display: inline-block;"><img id="cardDocumentIcon" alt="Document" src="${pathRoot}/media/document.png" style="height:2; width:2em; display: inline-block;">${displayedDate} <!-- Default dropup button -->
                             <div class="btn-group dropup">
                                 <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                     Dropup
                                 </button>
                                 <div class="dropdown-menu">
                                     <!-- Dropdown menu links -->
-                                    <a class="dropdown-item" href="./revert.html?doc=${doc.documentName}">Revert Version</a>
+                                    <a class="dropdown-item" href="${pathRoot}/views/revert.html?doc=${doc.documentName}">Revert Version</a>
                                     <a class="dropdown-item" href="#">Rename</a>
                                     <a class="dropdown-item" href="#">Delete</a>
                                 </div>
@@ -564,3 +565,5 @@ function textChangeHandler(delta, oldDelta, source) {
 */
 // const AWS = new Remote(openHandler, messageHandler);
 // window.textChangeHandler = textChangeHandler;
+const AWS = new Remote(openHandler, messageHandler);
+window.textChangeHandler = textChangeHandler;

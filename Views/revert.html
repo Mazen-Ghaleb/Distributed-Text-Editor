@@ -1,12 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <title>Shared Document Editor</title>
+    <script>
+      let allDocuments = [];
+      document.IS_REVERT = true;
+    </script>
+    <script src="../scripts/index.js"></script>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Shared Document Editor</title>
     <!-- Include stylesheets -->
-    <link rel="stylesheet" type="text/css" href="./style.css" />
+    <link rel="stylesheet" type="text/css" href="../styles/style.css" />
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css"
@@ -29,30 +34,59 @@
       crossorigin="anonymous"
     ></script>
     <link href="https://cdn.quilljs.com/2.0.0-dev.4/quill.snow.css" rel="stylesheet" />
-    <script>
-      let allDocuments = [];
-      document.IS_DOC = true;
-      if (decodeURI(location.href.split('iframe=')[1]).charAt(0) === 'y') {
-        //console.log(decodeURI(location.href.split('iframe=')[1]).charAt(0));
-        document.IS_IFRAME = true;
-        //document.body.addEventListener('click', parent.iframeRedirect('./document.html?doc=' + decodeURI(location.href.split('doc=')[1])), true);
-      }
-    </script>
   </head>
   <body>
+    <script>
+      documentName = decodeURI(location.href.split('=')[1]);
+      //console.log(documentName);
+    </script>
     <div class="alert" style="display: none">
       <span class="closebtn" style="display: block" onclick="this.parentElement.style.display='none';">&times;</span>
       <div id="errorAlert" style="display: inline">This is an alert box.</div>
     </div>
 
-    <!-- Create the editor container -->
-    <div id="container" style="display: none">
-      <div id="editor-container">
-        <div id="editor"></div>
+    <div>
+      <h3 style="padding-top: 2%; padding-left: 2%">Choose Version to display</h3>
+      <script>
+        function showVal(newVal) {
+          document.getElementById('valBox').innerHTML = newVal;
+        }
+      </script>
+
+      <div style="padding-top: 2%; padding-left: 2%; width: 50%">
+        <input
+          type="range"
+          name="verionSlider"
+          id="verionSlider"
+          class="slider"
+          min="0"
+          max="100"
+          value="100"
+          style="display: inline"
+          oninput='showVal("Version: "+ this.value)'
+          onchange='showVal("Version: "+ this.value)'
+        />
+        <label for="verionSlider" style="display: inline" id="valBox">Version: 100</label>
+        <br />
+        <input type="button" value="Open" style="width: 100%; height: 100%; margin: 0 auto" onclick="openDocumentHandler()" />
+        <br />
+        <br />
+        <br />
       </div>
+      <!-- Create the editor container -->
+      <div id="container" style="padding-left: 2%; padding-bottom: 2%; display: none; width: 90%">
+        <div id="editor-container">
+          <div id="editor"></div>
+        </div>
+      </div>
+      <div id="documents"></div>
+      <!-- TODO -->
+      <div style="padding-left: 2%">
+        <input type="button" value="Revert" style="width: 50%; height: 100%; margin: 0 auto" onclick="" />
+      </div>
+      <br />
     </div>
 
-    <div id="documents"></div>
     <!-- Include the Quill library -->
     <script src="https://cdn.quilljs.com/2.0.0-dev.4/quill.js"></script>
 
@@ -82,42 +116,26 @@
     
     Quill.register('modules/cursors', QuillCursors);
 
-    var quill;
-    if(!document.IS_IFRAME){
-        quill = new Quill('#editor', {
-            modules: {
-              toolbar: toolbarOptions,
-              cursors: true,
-            },
-            placeholder: 'Your document is empty...',
-            theme: 'snow',
-          });
-    }
-    else {
-        quill = new Quill('#editor', {
-            modules: {
-                toolbar: false,
-                cursors: true,
-            },
-            placeholder: 'Your document is empty...',
-            theme: 'snow',
-            readOnly: true,
-          });
-    }
-    
+    quill = new Quill('#editor', {
+      modules: {
+          toolbar: false,
+          cursors: true,
+      },
+      placeholder: 'Your document is empty...',
+      theme: 'snow',
+      readOnly: true,
+    });
     quill.on('text-change', window.textChangeHandler);
 
     const cursorManager = quill.getModule('cursors');
     cursorManager.options.transformOnTextChange = true;
     //cursorManager.options.hideSpeedMs = 0;
     var userCounter = 0;
-    var userDict = {};
-    `;
+    var userDict = {};`;
       document.body.appendChild(script);
       console.log('sucess');
     </script>
-    <script src="./remote.js"></script>
-    <script src="./delta_handler.js"></script>
-    <script src="./index.js"></script>
+    <script src="../scripts/remote.js"></script>
+    <script src="../scripts/delta_handler.js"></script>
   </body>
 </html>
