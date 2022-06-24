@@ -52,7 +52,9 @@ function getMyCursor() {
 }
 
 function sendCursorChanges() {
+    if(!document.IS_IFRAME){
     console.log("sendCursorChanges")
+    }
     // quill.on('selection-change',  function(eventName, ...args)  {
     //     if (range && range.length !== 0) {
     //         getMyCursor
@@ -80,11 +82,15 @@ function newBroadcastHandler(statusCode, body, newCursor = null)
     }
     else {
         ver = body["version"];
+        if(!document.IS_IFRAME){
         console.log (newCursor)
+        }
     }
 
     let id = body["connectionId"];
+    if(!document.IS_IFRAME){
     console.log(newCursor , userDict, id)
+    }
 
     if (!(id in userDict)){
         userCounter++;
@@ -111,7 +117,9 @@ function newBroadcastHandler(statusCode, body, newCursor = null)
 
 function alertTimeoutHandler()
 {
+    if(!document.IS_IFRAME){
     console.log("alertTimeoutHandler")
+    }
     errorAlert.parentElement.style.display = "none";
 }
 
@@ -135,10 +143,10 @@ function alertSuccess(message)
     errorAlert.parentElement.style.backgroundColor = "green";
 }
 
-function openDocumentHandler(elm)
+function openDocumentHandler(documentName)
 {
-    documentsUI.style.display = "none";
-    documentName = elm.getAttribute('value');
+    
+    //documentName = elm.getAttribute('value');
 
     // editUI.style.display = "block";
     // documentsUI.style.display = "none";
@@ -148,10 +156,30 @@ function openDocumentHandler(elm)
     //     alertError("No existing documents to open")
     //     return false;
     // }
-    console.log(documentName)
-    AWS.call("joinDocument", { "documentName": documentName });
-    clearInterval(SelectionInterval);
+    // if (allDocuments.length === 0){
+    //     setTimeout(1000);
+    // }
 
+    // console.log(documentName)
+    // console.log (Object.keys(allDocuments).map(function(key){
+    //     return allDocuments[key]["documentName"];
+    // }))
+    // console.log (Object.keys(allDocuments).map(function(key){
+    //     return allDocuments[key]["documentName"].indexOf(documentName) > -1;
+    // }))
+
+    if ((Object.keys(allDocuments).map(function(key){
+        return allDocuments[key]["documentName"].indexOf(documentName) != -1;
+         }))) {
+        documentsUI.style.display = "none";
+        //console.log(documentName)
+        AWS.call("joinDocument", { "documentName": documentName });
+        if(document.IS_INDEX)
+            clearInterval(SelectionInterval);
+        }
+    else {
+        alertError("Document name doesn't exist")
+    }
     return false;
 }
 
@@ -171,7 +199,9 @@ function createDocumentHandler()
 
 function openHandler()
 {
+    if(!document.IS_IFRAME){
     console.log("open")
+    }
     AWS.call("listDocuments")
 }
 
@@ -198,31 +228,29 @@ function generateCardsForAllDocuments(documents) {
             displayedDate = docDate[1] +" "+ docDate[0]+ ", " + docDate[2];
             cardsDiv.innerHTML += `
             <div class="card" style="width:16em; height: 16m; margin-top: 10px; margin-bottom: 10px;display: inline-block;">
-            <!-- Replace image with iframe later -->
-            <a href='javascript:;' onclick="openDocumentHandler(this);" value="${doc.documentName}">
-            <img id="cardDocumentImage"class="card-img-top" alt="Document" src="./document.png">
-            </a>
-            <div class="card-body">
-            <h5 id="card" class="card-title">${doc.documentName}</h5>
-            <div style="display: inline-block;">
-            
-            <p id="cardDate" class="card-text" style="display: inline-block;"><img id="cardDocumentIcon" alt="Document" src="./document.png" style="height:2; width:2em; display: inline-block;">${displayedDate} <!-- Default dropup button -->
-            <div class="btn-group dropup">
-              <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                Dropup
-              </button>
-              <div class="dropdown-menu">
-                <!-- Dropdown menu links -->
-                <a class="dropdown-item" href="./revert.html">Revert Version</a>
-                <a class="dropdown-item" href="#">Rename</a>
-                <a class="dropdown-item" href="#">Delete</a>
-              </div>
-            </div>            
-            </p>
-            </div>
-            <br>
-            </div>
-        </div>
+                <iframe src="./document.html?iframe=y?doc=${doc.documentName}" scrolling="no" style="overflow:hidden; width:100%; height:100%;border:none;" title="${doc.documentName}"></iframe> 
+                <div class="card-body">
+                    <a href='./document.html?doc=${doc.documentName}'>
+                        <h5 id="card" class="card-title">${doc.documentName}</h5>
+                    </a>
+                    <div style="display: inline-block;">
+                        <p id="cardDate" class="card-text" style="display: inline-block;"><img id="cardDocumentIcon" alt="Document" src="./document.png" style="height:2; width:2em; display: inline-block;">${displayedDate} <!-- Default dropup button -->
+                            <div class="btn-group dropup">
+                                <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    Dropup
+                                </button>
+                                <div class="dropdown-menu">
+                                    <!-- Dropdown menu links -->
+                                    <a class="dropdown-item" href="./revert.html?doc=${doc.documentName}">Revert Version</a>
+                                    <a class="dropdown-item" href="#">Rename</a>
+                                    <a class="dropdown-item" href="#">Delete</a>
+                                </div>
+                            </div>            
+                        </p>
+                    </div>
+                    <br>
+                </div>
+            </div> 
         `
         }
         currentDocumentCards = documents;
@@ -231,7 +259,30 @@ function generateCardsForAllDocuments(documents) {
 
 function listDocumentsHandler(statusCode, body)
 {
-    generateCardsForAllDocuments(body["documents"]);
+    if(document.IS_INDEX) {
+        // console.log (allDocuments)
+        // console.log (body["documents"])
+        // console.log (JSON.stringify(allDocuments)==JSON.stringify(body["documents"]))
+        if (!(JSON.stringify(allDocuments)==JSON.stringify(body["documents"]))){
+            generateCardsForAllDocuments(body["documents"]);
+            allDocuments = body["documents"];
+        }
+    }
+    else if (document.IS_DOC){
+        allDocuments = body["documents"];
+        var script = document.createElement('script');
+        script.innerHTML = `openDocumentHandler(decodeURI(location.href.split('doc=')[1]));`
+        document.body.appendChild(script);
+    }
+    else if (document.IS_REVERT) {
+        allDocuments = body["documents"];
+        var script = document.createElement('script');
+        script.innerHTML = `openDocumentHandler(decodeURI(location.href.split('doc=')[1]));`
+        document.body.appendChild(script);
+    }
+    else  {
+        allDocuments = body["documents"];
+    }
     // var isNotSameDoc = false;
     // for(const doc in body["documents"])
     // {
@@ -271,13 +322,18 @@ function composeDocumentOnJoin(statusCode, body){
     }
 
     if (newVersion === latestDelta){
+        
+        if(!document.IS_IFRAME){
         alertSuccess("Opened document");
+        }
         editUI.style.display = "block";
 
         if(cursorInterval === undefined)
             (function(){
+                if(!document.IS_IFRAME){
                 sendCursorChanges();
                 setTimeout(arguments.callee, 500);
+                }
             })();
 
         // Handle any outstanding out-of-order deltas
@@ -309,14 +365,18 @@ function joinDocumentHandler(statusCode, body)
     latestDelta = parseInt(body['documentVersion']);
 
     if (latestDelta == 0){
+        if(!document.IS_IFRAME){
         alertSuccess("Opened document");
+        }
         editUI.style.display = "block";
         documentsUI.style.display = "none";
 
         if(cursorInterval === undefined)
             (function(){
+                if(!document.IS_IFRAME){
                 sendCursorChanges();
                 setTimeout(arguments.callee, 500);
+                }
             })();
 
         return false;
@@ -327,8 +387,9 @@ function joinDocumentHandler(statusCode, body)
     else{
         AWS.call("getDeltas", { "oldVersion": 0, "newVersion": 100})
     }
-
+    if(!document.IS_IFRAME){
     sendCursorChanges();
+    }
 }
 
 function inOrderDeltaHandler(delta, isOwn, silent)
@@ -430,7 +491,8 @@ function newDeltaHandler(statusCode, body)
 
         for(let i = syncedVersion; i < allDeltas.length; i++)
         {
-            console.log(syncedVersion);
+            if(!document.IS_IFRAME){
+            console.log(syncedVersion);}
             if(allDeltas[i] === undefined) break;
             syncedVersion++;
 
@@ -509,5 +571,5 @@ function textChangeHandler(delta, oldDelta, source) {
     AWS.call("getDeltas")
 }
 */
-const AWS = new Remote(openHandler, messageHandler);
-window.textChangeHandler = textChangeHandler;
+// const AWS = new Remote(openHandler, messageHandler);
+// window.textChangeHandler = textChangeHandler;

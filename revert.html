@@ -30,43 +30,60 @@
     ></script>
     <link href="https://cdn.quilljs.com/2.0.0-dev.4/quill.snow.css" rel="stylesheet" />
     <script>
-      let currentDocumentCards;
+      let allDocuments = [];
+      document.IS_REVERT = true;
     </script>
   </head>
   <body>
+    <script>
+      documentName = decodeURI(location.href.split('=')[1]);
+      console.log(documentName);
+    </script>
     <div class="alert" style="display: none">
       <span class="closebtn" style="display: block" onclick="this.parentElement.style.display='none';">&times;</span>
       <div id="errorAlert" style="display: inline">This is an alert box.</div>
     </div>
 
-    <!-- Create the editor container -->
-    <div id="container" style="display: none">
-      <div id="editor-container">
-        <div id="editor"></div>
+    <div>
+      <h3 style="padding-top: 2%; padding-left: 2%">Choose Version to display</h3>
+      <script>
+        function showVal(newVal) {
+          document.getElementById('valBox').innerHTML = newVal;
+        }
+      </script>
+
+      <div style="padding-top: 2%; padding-left: 2%; width: 50%">
+        <input
+          type="range"
+          name="verionSlider"
+          id="verionSlider"
+          class="slider"
+          min="0"
+          max="100"
+          value="100"
+          style="display: inline"
+          oninput='showVal("Version: "+ this.value)'
+          onchange='showVal("Version: "+ this.value)'
+        />
+        <label for="verionSlider" style="display: inline" id="valBox">Version: 100</label>
+        <br />
+        <input type="button" value="Open" style="width: 100%; height: 100%; margin: 0 auto" onclick="openDocumentHandler()" />
+        <br />
+        <br />
+        <br />
       </div>
-    </div>
-
-    <div id="documents">
-      <!-- <form onsubmit="return openDocumentHandler(this)"> -->
-      <h3>Open Existing Document:</h3>
-      <div id="documentsCardsDiv"></div>
-      <!-- <label for="documentSelect">Document Name: </label>
-        <select name="documentSelect" id="documentSelect"></select>
-        <br />
-        <input type="submit" value="Open" />
-      </form> -->
-
-      <br/>
-
-      <form onsubmit="return createDocumentHandler(this)">
-        <h3>Create new Document:</h3>
-        <label for="documentName">Document Name: </label>
-
-        <input type="text" name="documentName" id="documentName" />
-
-        <br />
-        <input type="submit" value="Create" />
-      </form>
+      <!-- Create the editor container -->
+      <div id="container" style="padding-left: 2%; padding-bottom: 2%; display: none; width: 90%">
+        <div id="editor-container">
+          <div id="editor"></div>
+        </div>
+      </div>
+      <div id="documents"></div>
+      <!-- TODO -->
+      <div style="padding-left: 2%">
+        <input type="button" value="Revert" style="width: 50%; height: 100%; margin: 0 auto" onclick="" />
+      </div>
+      <br />
     </div>
 
     <!-- Include the Quill library -->
@@ -98,13 +115,14 @@
     
     Quill.register('modules/cursors', QuillCursors);
 
-    var quill = new Quill('#editor', {
+    quill = new Quill('#editor', {
       modules: {
-        toolbar: toolbarOptions,
-        cursors: true,
+          toolbar: false,
+          cursors: true,
       },
       placeholder: 'Your document is empty...',
       theme: 'snow',
+      readOnly: true,
     });
     quill.on('text-change', window.textChangeHandler);
 
@@ -118,5 +136,6 @@
     </script>
     <script src="./remote.js"></script>
     <script src="./delta_handler.js"></script>
+    <script src="./index.js"></script>
   </body>
 </html>
