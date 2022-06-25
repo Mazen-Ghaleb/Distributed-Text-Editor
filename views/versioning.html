@@ -48,7 +48,7 @@
           if (documentNewName !== null) {
             console.log(
               `"newDocumentVersion", { "documentOldName": "${decodeURI(
-                location.href.split('doc=')[1]
+                new URL(location.href).searchParams.get("doc")
               )}", "documentNewName": "${documentNewName}","documentDelta": ${JSON.stringify(
                 currentDocumentDelta
               )}, "documentVersion": ${JSON.stringify(currentDocumentDeltaNum)} }`
@@ -128,7 +128,7 @@
           //console.log(emptyDocDelta);
           //console.log(emptyDocDelta.compose(currentDocumentDelta));
           AWS.call("addDelta", { "documentVersion": docLastDeltaNum, "message": JSON.stringify(new Cursor("notInDocument")), "delta": JSON.stringify(emptyDocDelta.compose(currentDocumentDelta))});
-          window.location.assign(pathRoot+"/views/document.html?doc="+ decodeURI(location.href.split("doc=")[1]));}'
+          window.location.assign(pathRoot+"/views/document.html?doc="+ new URL(location.href).searchParams.get("doc"));}'
         />
         <br />
         <br />

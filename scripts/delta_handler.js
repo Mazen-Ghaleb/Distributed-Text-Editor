@@ -22,6 +22,8 @@ let documentName = document.getElementById("documentName");
 
 let cursorInterval = undefined;
 
+let isDisconnected = false;
+
 function Cursor(type, index, length) {
     this.type = type;
     this.index = index;
@@ -82,7 +84,7 @@ function newBroadcastHandler(statusCode, body, newCursor = null) {
         ver = newCursor.documentVersion;
     }
     else {
-        ver = body["version"];
+        ver = body["version"] + 1;
         if (!document.IS_IFRAME) {
             if (!document.IS_VERSIONING){
             //console.log(newCursor)
@@ -138,9 +140,11 @@ function alertTimeoutHandler() {
     errorAlert.parentElement.style.display = "none";
 }
 
-function alertError(message) {
+function alertError(message, forever) {
     if (alertTimeout) clearTimeout(alertTimeout);
-    alertTimeout = setTimeout(alertTimeoutHandler, 4000)
+
+    if(forever !== true)
+        alertTimeout = setTimeout(alertTimeoutHandler, 4000)
 
     errorAlert.innerText = message;
     errorAlert.parentElement.style.display = "block";
@@ -216,7 +220,7 @@ function generateCardsForAllDocuments(documents) {
             displayedDate = docDate[1] + " " + docDate[0] + ", " + docDate[2];
             cardsDiv.innerHTML += `
             <div class="card" style="width:16em; height: 16m; margin-top: 10px; margin-bottom: 10px;display: inline-block;">
-                <iframe src="${pathRoot}/views/document.html?iframe=y?doc=${doc.documentName}" scrolling="no" style="overflow:hidden; width:100%; height:100%;border:none;" title="${doc.documentName}"></iframe> 
+                <iframe src="${pathRoot}/views/document.html?iframe=y&doc=${doc.documentName}" scrolling="no" style="overflow:hidden; width:100%; height:100%;border:none;" title="${doc.documentName}"></iframe> 
                 <div class="card-body">
                     <a href='${pathRoot}/views/document.html?doc=${doc.documentName}'>
                         <h5 id="card" class="card-title" style="height:6em; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical ">${doc.documentName}</h5>
@@ -322,7 +326,8 @@ function listDocumentsHandler(statusCode, body) {
             return allDocuments[key]["documentName"].indexOf(documentName) != -1;
         }))){
         var script = document.createElement('script');
-        script.innerHTML = `openDocumentHandler(decodeURI(location.href.split('doc=')[1]));`
+        console.log("BUR", new URL(location.href).searchParams.get("doc"), location.href)
+        script.innerHTML = `openDocumentHandler(new URL(location.href).searchParams.get("doc"));`
         document.body.appendChild(script);
         }
         else {
@@ -349,13 +354,12 @@ function composeDocumentOnJoin(statusCode, body) {
     while (newVersion > allDeltas.length) allDeltas.push(undefined);
 
     for (const delta in deltas) {
-        syncedDocument = syncedDocument.compose(JSON.parse(deltas[delta]));
-        allDeltas[oldVersion + delta] = deltas[delta];
+        syncedDocument = syncedDocument.compose(JSON.parse(deltas[parseInt(delta)]));
+        allDeltas[parseInt(oldVersion) + parseInt(delta)] = deltas[parseInt(delta)];
         syncedVersion++;
     }
 
     if (newVersion === latestDelta) {
-
         if (!document.IS_IFRAME) {
             alertSuccess("Opened document");
         }
@@ -380,12 +384,37 @@ function composeDocumentOnJoin(statusCode, body) {
             syncedDocument = syncedDocument.compose(JSON.parse(allDeltas[i]));
             syncedVersion++;
         }
+
         quill.setContents(syncedDocument, 'silent');
         if (document.IS_VERSIONING && docLastDeltaNum !== undefined) {
             currentDocumentDelta = syncedDocument;
-            // lastDeltaLength = quill.getLength()
-            //console.log(currentDocumentDelta)
         }
+
+        let url = new URL(location.href)
+        let extraDeltaUnparsed = url.searchParams.get("extraDelta");
+        let extraDeltaVersion = url.searchParams.get("extraDeltaVersion");
+        if(extraDeltaUnparsed != undefined && extraDeltaVersion != undefined)
+        {
+            let extraDelta = new Delta(JSON.parse(extraDeltaUnparsed));
+            extraDeltaVersion = parseInt(extraDeltaVersion);
+
+            let unsyncedDelta = new Delta();
+            for(let i = extraDeltaVersion; i < syncedVersion; i++)
+                unsyncedDelta = unsyncedDelta.compose(JSON.parse(allDeltas[i]));
+
+            pendingDelta = unsyncedDelta.transform(extraDelta, true);
+            quill.updateContents(pendingDelta);
+            AWS.call("addDelta", { "documentVersion": syncedVersion, "message": JSON.stringify(getMyCursor()), "delta": JSON.stringify(pendingDelta) })
+
+            // quill.updateContents(pendingDelta);
+            // inOrderDeltaHandler(extraDeltaUnparsed, true);
+            // syncedDocument = syncedDocument.compose(extraDelta);
+            // AWS.call("addDelta", { "documentVersion": syncedVersion, "message": JSON.stringify(getMyCursor()), "delta": JSON.stringify(extraDelta) })
+        }
+
+        url.searchParams.delete("extraDelta");
+        url.searchParams.delete("extraDeltaVersion");
+        history.pushState({}, null, url.toString());
     }
     else {
         if (latestDelta - newVersion <= 100) {
@@ -427,6 +456,28 @@ function joinDocumentHandler(statusCode, body) {
                     }
                 }
             })();
+
+        let url = new URL(location.href)
+        let extraDelta = url.searchParams.get("extraDelta");
+        let extraDeltaVersion = url.searchParams.get("extraDeltaVersion");
+        if(extraDelta != undefined && extraDeltaVersion != undefined)
+        {
+            // quill.updateContents(extraDelta);
+            // inOrderDeltaHandler(extraDelta, true);
+
+
+            // pendingDelta = unsyncedDelta.transform(extraDelta, true);
+            quill.updateContents(extraDelta);
+            AWS.call("addDelta", { "documentVersion": syncedVersion, "message": JSON.stringify(getMyCursor()), "delta": extraDelta })
+
+            // quill.updateContents(new Delta(JSON.parse(extraDelta)));
+            // syncedDocument = syncedDocument.compose(JSON.parse(extraDelta));
+            // AWS.call("addDelta", { "documentVersion": syncedVersion, "message": JSON.stringify(getMyCursor()), "delta": extraDelta })
+        }
+
+        url.searchParams.delete("extraDelta");
+        url.searchParams.delete("extraDeltaVersion");
+        history.pushState({}, null, url.toString());
 
         return false;
     }
@@ -521,10 +572,6 @@ function newDeltaHandler(statusCode, body) {
     let newCursor = JSON.parse(body["message"]);
     //console.log(body)
   
-    if (!isOwn) {
-        newBroadcastHandler(statusCode, body, newCursor);
-    }
-
     while (deltaVersion >= allDeltas.length) allDeltas.push(undefined); // Fill it with empty deltas till we reach the correct size
 
     if (deltaVersion < syncedVersion) { // How did we receive a delta twice?
@@ -573,6 +620,9 @@ function newDeltaHandler(statusCode, body) {
 
             let silent = i < allDeltas.length - 1 && allDeltas[i + 1] !== undefined;
             inOrderDeltaHandler(allDeltas[i]["delta"], allDeltas[i]["isOwn"], silent);
+            console.log(newCursor)
+            if (isOwn === false)
+                newBroadcastHandler(statusCode, body, newCursor);
 
             allDeltas[i] = allDeltas[i]["delta"];
         }
@@ -671,7 +721,6 @@ function textChangeHandler(delta, oldDelta, source) {
         if (pendingDelta === undefined) {
             pendingDelta = delta;
             AWS.call("addDelta", { "documentVersion": syncedVersion, "message": JSON.stringify(getMyCursor()), "delta": JSON.stringify(pendingDelta) })
-
         }
         else if (blockedDelta === undefined)
             blockedDelta = delta;
@@ -680,5 +729,39 @@ function textChangeHandler(delta, oldDelta, source) {
     }
 }
 
-const AWS = new Remote(openHandler, messageHandler);
+function disconnectHandler()
+{
+    if(document.IS_IFRAME) return;
+    
+    setTimeout(()=> alertError("Disconnected. Waiting for an internet connection...", true), 2000); // Show error after 2 seconds
+}
+
+window.addEventListener('offline', disconnectHandler);
+window.addEventListener('online', () => {
+    if(document.IS_IFRAME) return;
+
+    if (blockedDelta !== undefined)
+        pendingDelta = pendingDelta.compose(blockedDelta);
+
+    let extraDelta = pendingDelta;
+    if(extraDelta === undefined)
+    {
+        let url = new URL(location.href)
+        url.searchParams.delete("extraDelta");
+        url.searchParams.delete("extraDeltaVersion");
+
+        window.location.assign(url.toString());
+    }
+    else
+    {
+        let url = new URL(location.href)
+        url.searchParams.set("extraDelta", JSON.stringify(pendingDelta));
+        url.searchParams.set("extraDeltaVersion", syncedVersion);
+
+        window.location.assign(url.toString());
+        // new URL(location.href).searchParams.get("doc")
+    }
+});
+
+const AWS = new Remote(openHandler, messageHandler, disconnectHandler, disconnectHandler);
 window.textChangeHandler = textChangeHandler;
