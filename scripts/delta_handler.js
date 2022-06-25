@@ -117,14 +117,16 @@ function newBroadcastHandler(statusCode, body, newCursor = null) {
                 cursorManager.moveCursor(id, { 'index': newCursor.index, 'length': newCursor.length });
             }
             else if (newCursor.type === "notInDocument") {
-                cursorManager.removeCursor(id);
+                cursorManager.toggleFlag(id, false);
+                //cursorManager.removeCursor(id);
             }
             cursorManager.update();
         }
     }
     else { // IN REVERT but not last delta
+        cursorManager.toggleFlag(id, false);
         //cursorManager.removeCursor(id);
-        cursorManager.clearCursors();
+        //cursorManager.clearCursors();
         cursorManager.update();
     }
 }
@@ -224,8 +226,12 @@ function generateCardsForAllDocuments(documents) {
                             <div class="dropdown-menu">
                                 <!-- Dropdown menu links -->
                                 <a class="dropdown-item" href="${pathRoot}/views/revert.html?doc=${doc.documentName}">Revert Version</a>
-                                <a class="dropdown-item" href="#">Rename</a>
-                                <a class="dropdown-item" href="#">Delete</a>
+                                <a class="dropdown-item" href="javascript:;" onclick='
+                                let documentNewName= prompt("Please enter your new document name");
+                                if (documentNewName !== null) {
+                                AWS.call("renameDocument", { "documentOldName": "${doc.documentName}", "documentNewName": documentNewName });
+                                }'>Rename</a>
+                                <a class="dropdown-item" href="javascript:;" onclick='AWS.call("deleteDocument", { "documentName": "${doc.documentName}" });'>Delete</a>
                             </div>
                         </div>
                     </div>
@@ -520,10 +526,25 @@ function newDeltaHandler(statusCode, body) {
         console.error("UNEXPECTED CASE", syncedVersion, deltaVersion, isOwn, delta, pendingDelta, allDeltas)
 }
 
+function deleteDocumentHandler(statusCode, body) {
+    if (statusCode !== 200) {
+        alertError("Could not delete document" + body);
+        return;
+    }
+        alertSuccess("Deleted document successfully");
+}
+function renameDocumentHandler(statusCode, body) {
+    if (statusCode !== 200) {
+        alertError("Could not rename document" + body);
+        return;
+    }
+        alertSuccess("Renamed document successfully");
+}
+
 function messageHandler(message) {
     let statusCode = message.statusCode;
     let body = message.body;
-
+    console.log(body)
     if (statusCode === 400) console.error(message)
     else body = JSON.parse(body);
 
@@ -545,6 +566,12 @@ function messageHandler(message) {
             break;
         case "newBroadcast":
             newBroadcastHandler(statusCode, body);
+            break;
+        case "deleteDocument":
+            deleteDocumentHandler(statusCode, body);
+            break;
+        case "renameDocument":
+            renameDocumentHandler(statusCode, body);
             break;
         default:
             console.error(`Unknown Action \"${message.action}\"`)
