@@ -3,13 +3,13 @@
   <head>
     <title>Shared Document Editor</title>
     <script>
+      document.SORT_DATE = true;
+      document.SEARCH = true;
+      let search_term = decodeURI(location.href.split('searchterm=')[1]);
+      let currentDocumentSort = false;
+      let currentDocumentCards;
       let allDocuments = [];
-      document.IS_DOC = true;
-      if (decodeURI(location.href.split('iframe=')[1]).charAt(0) === 'y') {
-        //console.log(decodeURI(location.href.split('iframe=')[1]).charAt(0));
-        document.IS_IFRAME = true;
-        //document.body.addEventListener('click', parent.iframeRedirect('./document.html?doc=' + decodeURI(location.href.split('doc=')[1])), true);
-      }
+      let search_results = [];
     </script>
     <script src="../scripts/index.js"></script>
     <meta charset="UTF-8" />
@@ -42,9 +42,7 @@
   </head>
   <body>
     <script>
-      if (!document.IS_IFRAME) {
-        generateNavBar();
-      }
+      generateNavBar();
     </script>
     <div class="alert" style="display: none">
       <span class="closebtn" style="display: block" onclick="this.parentElement.style.display='none';">&times;</span>
@@ -58,7 +56,36 @@
       </div>
     </div>
 
-    <div id="documents"></div>
+    <div id="documents">
+      <div id="ResultsHeader">
+        <h3 style="display: inline-block">Results found:</h3>
+        <div class="dropdown" style="display: inline-block; position: absolute; right: 50%">
+          <button class="btn btn-secondary" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            <img id="sortIcon" alt="Sort" src="../media/sort.png" style="width: 2em; height: 2em" />
+          </button>
+          <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+            <a
+              class="dropdown-item"
+              href="javascript:;"
+              onclick="document.SORT_DATE = false; generateCardsForAllDocuments(allDocuments);"
+              ;
+              value="name"
+              ;
+              >Name</a
+            >
+            <a
+              class="dropdown-item"
+              href="javascript:;"
+              onclick="document.SORT_DATE = true; generateCardsForAllDocuments(allDocuments);"
+              ;
+              value="date"
+              >Date</a
+            >
+          </div>
+        </div>
+      </div>
+      <div id="documentsCardsDiv"></div>
+    </div>
     <!-- Include the Quill library -->
     <script src="https://cdn.quilljs.com/2.0.0-dev.4/quill.js"></script>
 
@@ -88,42 +115,30 @@
     
     Quill.register('modules/cursors', QuillCursors);
 
-    var quill;
-    if(!document.IS_IFRAME){
-        quill = new Quill('#editor', {
-            modules: {
-              toolbar: toolbarOptions,
-              cursors: true,
-            },
-            placeholder: 'Your document is empty...',
-            theme: 'snow',
-          });
-    }
-    else {
-        quill = new Quill('#editor', {
-            modules: {
-                toolbar: false,
-                cursors: true,
-            },
-            placeholder: 'Your document is empty...',
-            theme: 'snow',
-            readOnly: true,
-          });
-    }
-    
+    var quill = new Quill('#editor', {
+      modules: {
+        toolbar: toolbarOptions,
+        cursors: true,
+      },
+      placeholder: 'Your document is empty...',
+      theme: 'snow',
+    });
     quill.on('text-change', window.textChangeHandler);
 
     const cursorManager = quill.getModule('cursors');
     cursorManager.options.transformOnTextChange = true;
     //cursorManager.options.hideSpeedMs = 0;
     var userCounter = 0;
-    var userDict = {};
-    `;
+    var userDict = {};`;
       document.body.appendChild(script);
-      console.log('sucess');
-      console.log();
     </script>
     <script src="../scripts/remote.js"></script>
     <script src="../scripts/delta_handler.js"></script>
+    <script>
+      function updateDocuments() {
+        AWS.call('listDocuments');
+      }
+      var SelectionInterval = setInterval(updateDocuments, 5000);
+    </script>
   </body>
 </html>

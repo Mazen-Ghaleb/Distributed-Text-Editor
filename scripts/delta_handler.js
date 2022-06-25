@@ -246,7 +246,7 @@ function generateCardsForAllDocuments(documents) {
 
 function listDocumentsHandler(statusCode, body) {
     if (document.IS_INDEX) {
-        if (!document.NOT_SORT_DATE) {
+        if (document.SORT_DATE) {
             body["documents"].sort(function (a, b) { return new Date(b.documentDate) - new Date(a.documentDate)});
             if (currentDocumentSort === false){
                 generateCardsForAllDocuments(body["documents"]);
@@ -267,6 +267,43 @@ function listDocumentsHandler(statusCode, body) {
         if ((x !== allDocuments.length) || (x !== body["documents"].length)) {
             generateCardsForAllDocuments(body["documents"]);
             allDocuments = body["documents"];
+        }
+    }
+    else if (document.SEARCH) {
+        search_results = []
+        for (let i = 0; i < body["documents"].length; i++) {
+            if (body["documents"][i].documentName.toLowerCase().includes(search_term.toLowerCase())){
+                search_results.push(body["documents"][i])
+            }
+        }
+        if (search_results.length === 0) {
+            let cardsDiv = document.getElementById("documentsCardsDiv");
+            cardsDiv.innerHTML = '<h1 style="vertical-align:middle;text-align:center; color:black; margin-top:20%;">No Results Found</h1>';
+            ResultsHeader.style.display="none";
+            currentDocumentCards = [];
+        }
+        else {
+            ResultsHeader.style.display="intial";
+            if (document.SORT_DATE) {
+                search_results.sort(function (a, b) { return new Date(b.documentDate) - new Date(a.documentDate)});
+                if (currentDocumentSort === false){
+                    generateCardsForAllDocuments(search_results);
+                    currentDocumentSort = true;
+                }
+            }
+            else {
+                search_results.sort(function (a, b) { return a.documentName.localeCompare(b.documentName) });
+                if (currentDocumentSort === true){
+                    generateCardsForAllDocuments(search_results);
+                    currentDocumentSort = false;
+                }
+            }
+            let x = allDocuments.filter(o1 => body["documents"].some(o2 => o1.documentName === o2.documentName)).length;
+            
+            if ((x !== allDocuments.length) || (x !== body["documents"].length)) {
+                generateCardsForAllDocuments(search_results);
+                allDocuments = body["documents"];
+            }
         }
     }
     else if (document.IS_DOC) {

@@ -4,7 +4,7 @@
     <title>Shared Document Editor</title>
     <script>
       document.IS_INDEX = true;
-      document.NOT_SORT_DATE = false;
+      document.SORT_DATE = true;
       let currentDocumentSort = false;
       let currentDocumentCards;
       let allDocuments = [];
@@ -39,6 +39,9 @@
     <link href="https://cdn.quilljs.com/2.0.0-dev.4/quill.snow.css" rel="stylesheet" />
   </head>
   <body>
+    <script>
+      generateNavBar();
+    </script>
     <div class="alert" style="display: none">
       <span class="closebtn" style="display: block" onclick="this.parentElement.style.display='none';">&times;</span>
       <div id="errorAlert" style="display: inline">This is an alert box.</div>
@@ -62,18 +65,13 @@
           <a
             class="dropdown-item"
             href="javascript:;"
-            onclick="document.NOT_SORT_DATE = true; generateCardsForAllDocuments(allDocuments);"
+            onclick="document.SORT_DATE = false; generateCardsForAllDocuments(allDocuments);"
             ;
             value="name"
             ;
             >Name</a
           >
-          <a
-            class="dropdown-item"
-            href="javascript:;"
-            onclick="document.NOT_SORT_DATE = false; generateCardsForAllDocuments(allDocuments);"
-            ;
-            value="date"
+          <a class="dropdown-item" href="javascript:;" onclick="document.SORT_DATE = true; generateCardsForAllDocuments(allDocuments);" ; value="date"
             >Date</a
           >
         </div>
@@ -142,7 +140,6 @@
     var userCounter = 0;
     var userDict = {};`;
       document.body.appendChild(script);
-      console.log('sucess');
     </script>
     <script src="./scripts/remote.js"></script>
     <script src="./scripts/delta_handler.js"></script>

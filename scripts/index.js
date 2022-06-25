@@ -1,5 +1,50 @@
+function search_button() {
+    let search_term = document.getElementById('search-box').value
+    if (search_term == ""){
+      return false;
+    }
+
+    window.location.assign(pathRoot+"/views/searchDocuments.html?searchterm="+ search_term);
+    return false;
+  }
+
+function generateNavBar() {
+  
+    let nav = document.createElement("nav");
+    nav.classList.add(
+      "navbar",
+      "navbar-dark",
+      "bg-dark",
+      "justify-content-between"
+    );
+    nav.innerHTML = `<a class="navbar-brand" href="${pathRoot}/index.html">
+    <button class="btn btn-outline-primary my-2 my-sm-0" style="border:none; color:lightblue;" id="browseAllBooksBtn">Shared Document Editor</button></a>
+
+      </div>
+      <div style="display:inline;width:45%;" id="searchContainer">
+        <form style="display:inline;"class="form-inline" onsubmit="return search_button()">
+        <!--TODO  -->
+          <input type="search" style="width:60%;" class="form-control mr-sm-2" placeholder="Search for document by Name" aria-label="Search" id="search-box" />
+          <button class="btn btn-secondary my-2 my-sm-0" style="border:none; color:lightyellow;" type="submit">Search</button>
+        </form>
+      </div>
+        <div style="display:inline;" id="profile-container">
+        <a style="color:lightblue;" id="signIn" href="${pathRoot}/views/SignIn.html">
+          <button class="btn btn-outline-success my-2 my-sm-0" style="text-decoration:underline;margin:5px; border:none; color:lightblue;">Sign In</button></a>
+  
+          <a style="color:lightblue;" id="signUp" href="${pathRoot}/views/SignUp.html">
+          <button class="btn btn-outline-success my-2 my-sm-0" style="text-decoration:underline;border:none; color:lightblue;">Sign Up</button></a>
+        </div>
+    `;
+    document.body.append(nav);
+}
+
+
+
 let pathRoot = "..";
 if(document.IS_INDEX) pathRoot = ".";
+
+
 
 // document.getElementsByTagName("head")[0].innerHTML += ` <meta charset="UTF-8" />
 // <meta http-equiv="X-UA-Compatible" content="IE=edge" />
