@@ -508,7 +508,7 @@ function inOrderDeltaHandler(delta, isOwn, silent) {
     if (pendingDelta === undefined) {
         // The very normal case w/o any races: We didn't send anything, and we received a new delta
         syncedDocument = syncedDocument.compose(parsedDelta);
-        quill.updateContents(parsedDelta, 'silent');
+        quill.updateContents(parsedDelta);
         // if (document.IS_VERSIONING) {
         //     lastDeltaLength = quill.getLength()
         // }
@@ -525,7 +525,6 @@ function inOrderDeltaHandler(delta, isOwn, silent) {
             if (silent !== true)
                 //AWS.call("addDelta", { "documentVersion": syncedVersion, "delta": JSON.stringify(pendingDelta) })
                 AWS.call("addDelta", { "documentVersion": syncedVersion, "message": JSON.stringify(getMyCursor()), "delta": JSON.stringify(pendingDelta) })
-
         }
     }
     else if (isOwn === false) {
@@ -620,11 +619,15 @@ function newDeltaHandler(statusCode, body) {
 
             let silent = i < allDeltas.length - 1 && allDeltas[i + 1] !== undefined;
             inOrderDeltaHandler(allDeltas[i]["delta"], allDeltas[i]["isOwn"], silent);
-            console.log(newCursor)
-            if (isOwn === false)
-                newBroadcastHandler(statusCode, body, newCursor);
+            // console.log(newCursor)
+            // if (isOwn === false)
+            //     newBroadcastHandler(statusCode, body, newCursor);
+            if(allDeltas[i]["type"] === "atIndex")
+                cursorManager.moveCursor(allDeltas[i]["connectionId"], { 'index': allDeltas[i]["index"], 'length': allDeltas[i]["length"] });
+                // cursorManager.moveCursor(allDeltas[i]["type"], { 'index': allDeltas[i]["index"], 'length': allDeltas[i]["length"] });
 
             allDeltas[i] = allDeltas[i]["delta"];
+            // connectionId
         }
     }
     else // ???
@@ -665,6 +668,13 @@ function newDocumentVersionHandler(statusCode, body) {
     }
         alertSuccess("Created new version of document successfully");
 }
+
+function clientDisconnectHandler(statusCode,body){
+    let disconnectedId = body['connectionId'];
+    //cursorManager.toggleFlag(id, false);
+    cursorManager.removeCursor(disconnectedId);
+}
+
 function messageHandler(message) {
     let statusCode = message.statusCode;
     let body = message.body;
@@ -702,6 +712,9 @@ function messageHandler(message) {
             break;
         case "newDocumentVersion":
             newDocumentVersionHandler(statusCode, body);
+            break;
+        case "clientDisconnect":
+            clientDisconnectHandler(statusCode,body);
             break;
         default:
             console.error(`Unknown Action \"${message.action}\"`)

@@ -55,12 +55,15 @@ const disconnectHandler = async(connectionId) => {
     
     if(old.Attributes && old.Attributes["documentName"])
     {
-        await ddbClient.update({
+        let doc = await ddbClient.update({
             TableName: "shared-docs-documents",
             Key: { 'documentName': old.Attributes["documentName"] },
             UpdateExpression: "DELETE documentUsers :u",
             ExpressionAttributeValues: { ':u': ddbClient.createSet(connectionId) },
+            ReturnValues: 'ALL_NEW'
         }).promise();
+        
+        await sendToMany(doc.Attributes["documentUsers"].values, { "action": "clientDisconnect", "statusCode": 200, "body": JSON.stringify({ "connectionId": connectionId }) })
     }
     
     return success({});
@@ -445,9 +448,9 @@ const broadcastMessage = async(connectionId, body) => {
     const senderIndex = otherUsers.indexOf(connectionId);
     if (senderIndex > -1) otherUsers.splice(senderIndex, 1);
     
-    console.log(otherUsers)
+    // console.log(otherUsers)
     await sendToMany(otherUsers, { "action": "newBroadcast", "statusCode": 200, "body": JSON.stringify({ "message": body["message"], "connectionId":connectionId }) })
-    console.log("SENT")
+    // console.log("SENT")
     
     return undefined;
 }
