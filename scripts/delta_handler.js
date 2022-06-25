@@ -53,7 +53,9 @@ function getMyCursor() {
 
 function sendCursorChanges() {
     if (!document.IS_IFRAME) {
-        console.log("sendCursorChanges")
+        if (!document.IS_REVERT){
+        //console.log("sendCursorChanges")
+        }
     }
     // quill.on('selection-change',  function(eventName, ...args)  {
     //     if (range && range.length !== 0) {
@@ -82,33 +84,47 @@ function newBroadcastHandler(statusCode, body, newCursor = null) {
     else {
         ver = body["version"];
         if (!document.IS_IFRAME) {
-            console.log(newCursor)
+            if (!document.IS_REVERT){
+            //console.log(newCursor)
+            }
         }
     }
 
     let id = body["connectionId"];
     if (!document.IS_IFRAME) {
-        console.log(newCursor, userDict, id)
+        if (!document.IS_REVERT){
+        //console.log(newCursor, userDict, id)
+        }
     }
 
     if (!(id in userDict)) {
         userCounter++;
         userDict[id] = "User " + userCounter;
     }
-    cursorManager.createCursor(id, userDict[id], generateRandomColor()); //Creates cursor if doesn't exist
+    //console.log(currentDocumentDeltaNum,docLastDeltaNum,ver)
+    //if (!document.IS_REVERT || ((document.IS_REVERT && docLastDeltaNum === ver) && currentDocumentDeltaNum === ver )){
+    if (!document.IS_REVERT || (document.IS_REVERT && currentDocumentDeltaNum === ver )){
 
-    cursorManager.toggleFlag(id, true);
+        cursorManager.createCursor(id, userDict[id], generateRandomColor()); //Creates cursor if doesn't exist
 
-    if (ver === syncedVersion && pendingDelta === undefined) {
-        if (newCursor.type === "atIndex") {
-            cursorManager.moveCursor(id, { 'index': newCursor.index, 'length': newCursor.length });
+        cursorManager.toggleFlag(id, true);
+
+        if (ver === syncedVersion && pendingDelta === undefined) {
+            if (newCursor.type === "atIndex") {
+                cursorManager.moveCursor(id, { 'index': newCursor.index, 'length': newCursor.length });
+            }
+            else if (newCursor.type === "highlight") {
+                cursorManager.moveCursor(id, { 'index': newCursor.index, 'length': newCursor.length });
+            }
+            else if (newCursor.type === "notInDocument") {
+                cursorManager.removeCursor(id);
+            }
+            cursorManager.update();
         }
-        else if (newCursor.type === "highlight") {
-            cursorManager.moveCursor(id, { 'index': newCursor.index, 'length': newCursor.length });
-        }
-        else if (newCursor.type === "notInDocument") {
-            cursorManager.removeCursor(id);
-        }
+    }
+    else { // IN REVERT but not last delta
+        //cursorManager.removeCursor(id);
+        cursorManager.clearCursors();
         cursorManager.update();
     }
 }
@@ -139,29 +155,6 @@ function alertSuccess(message) {
 }
 
 function openDocumentHandler(documentName) {
-
-    //documentName = elm.getAttribute('value');
-
-    // editUI.style.display = "block";
-    // documentsUI.style.display = "none";
-
-    // if(documentSelect.value === "")
-    // {
-    //     alertError("No existing documents to open")
-    //     return false;
-    // }
-    // if (allDocuments.length === 0){
-    //     setTimeout(1000);
-    // }
-
-    // console.log(documentName)
-    // console.log (Object.keys(allDocuments).map(function(key){
-    //     return allDocuments[key]["documentName"];
-    // }))
-    // console.log (Object.keys(allDocuments).map(function(key){
-    //     return allDocuments[key]["documentName"].indexOf(documentName) > -1;
-    // }))
-
     if ((Object.keys(allDocuments).map(function (key) {
         return allDocuments[key]["documentName"].indexOf(documentName) != -1;
     }))) {
@@ -201,7 +194,7 @@ function newDocumentHandler(statusCode, body) {
         alertError("Could not create document: " + body);
         return;
     }
-console.log(body);
+    //console.log(body);
     alertSuccess("Document created");
     window.location.assign(pathRoot+'/views/document.html?doc='+ documentName.value)
     editUI.style.display = "block";
@@ -249,12 +242,7 @@ function generateCardsForAllDocuments(documents) {
 
 function listDocumentsHandler(statusCode, body) {
     if (document.IS_INDEX) {
-        // console.log (allDocuments)
-        // console.log (body["documents"])
-        // console.log (JSON.stringify(allDocuments)==JSON.stringify(body["documents"]))
-        //console.log( allDocuments.filter(o1 => body["documents"].some(o2 => o1.documentName === o2.documentName)).length === body["documents"].length);
         if (!document.NOT_SORT_DATE) {
-            console.log(body["documents"].sort(function (a, b) { return new Date(b.documentDate) - new Date(a.documentDate)}))
             body["documents"].sort(function (a, b) { return new Date(b.documentDate) - new Date(a.documentDate)});
             if (currentDocumentSort === false){
                 generateCardsForAllDocuments(body["documents"]);
@@ -269,7 +257,6 @@ function listDocumentsHandler(statusCode, body) {
             }
         }
         if (!(allDocuments.filter(o1 => body["documents"].some(o2 => o1.documentName === o2.documentName)).length === body["documents"].length)) {
-            //console.log(body["documents"]);
             generateCardsForAllDocuments(body["documents"]);
             allDocuments = body["documents"];
         }
@@ -289,29 +276,6 @@ function listDocumentsHandler(statusCode, body) {
     else {
         allDocuments = body["documents"];
     }
-    // var isNotSameDoc = false;
-    // for(const doc in body["documents"])
-    // {
-    //     let documentName = body["documents"][doc]["documentName"];
-    //     if (documentSelect.innerHTML !== `<option value=\"${documentName}\">${documentName}</option>`){
-    //         isNotSameDoc = true;
-    //         break;
-    //     }
-    // }
-
-    // if (isNotSameDoc) {
-    //     documentSelect.innerHTML = "";
-    //     let sortArr = [];
-    //     for(const doc in body["documents"])
-    //     {
-    //         let documentName = body["documents"][doc]["documentName"];
-    //         sortArr.push(documentName)
-    //     }
-    //     sortArr.sort((a, b) => a.localeCompare(b))
-    //     for (var i =0; i<sortArr.length;i++){
-    //         documentSelect.innerHTML += `<option value=\"${sortArr[i]}\">${sortArr[i]}</option>`;
-    //     }
-    // }
 }
 
 function composeDocumentOnJoin(statusCode, body) {
@@ -337,8 +301,10 @@ function composeDocumentOnJoin(statusCode, body) {
         if (cursorInterval === undefined)
             (function () {
                 if (!document.IS_IFRAME) {
+                    if (!document.IS_REVERT){
                     sendCursorChanges();
                     setTimeout(arguments.callee, 500);
+                    }
                 }
             })();
 
@@ -351,8 +317,12 @@ function composeDocumentOnJoin(statusCode, body) {
             syncedDocument = syncedDocument.compose(JSON.parse(allDeltas[i]));
             syncedVersion++;
         }
-
         quill.setContents(syncedDocument, 'silent');
+        if (document.IS_REVERT && docLastDeltaNum !== undefined) {
+            currentDocument = syncedDocument;
+            // lastDeltaLength = quill.getLength()
+            //console.log(currentDocument)
+        }
     }
     else {
         if (latestDelta - newVersion <= 100) {
@@ -367,7 +337,17 @@ function composeDocumentOnJoin(statusCode, body) {
 function joinDocumentHandler(statusCode, body) {
     syncedDocument = new Delta();
     latestDelta = parseInt(body['documentVersion']);
-
+    if (document.IS_REVERT && docLastDeltaNum === undefined) {
+        currentDocumentDeltaNum = latestDelta; 
+        docLastDeltaNum = latestDelta;
+        verionSlider.max = latestDelta;
+        verionSlider.value = latestDelta;
+        valBox.innerHTML= `Version: ${latestDelta}`;
+        valBox.style.display = 'initial';
+    } else if (document.IS_REVERT) {
+        latestDelta = verionSlider.value;
+        currentDocumentDeltaNum = verionSlider.value;
+    }
     if (latestDelta == 0) {
         if (!document.IS_IFRAME) {
             alertSuccess("Opened document");
@@ -378,8 +358,10 @@ function joinDocumentHandler(statusCode, body) {
         if (cursorInterval === undefined)
             (function () {
                 if (!document.IS_IFRAME) {
+                    if (!document.IS_REVERT){
                     sendCursorChanges();
                     setTimeout(arguments.callee, 500);
+                    }
                 }
             })();
 
@@ -392,7 +374,9 @@ function joinDocumentHandler(statusCode, body) {
         AWS.call("getDeltas", { "oldVersion": 0, "newVersion": 100 })
     }
     if (!document.IS_IFRAME) {
+        if (!document.IS_REVERT){
         sendCursorChanges();
+        }
     }
 }
 
@@ -411,6 +395,9 @@ function inOrderDeltaHandler(delta, isOwn, silent) {
         // The very normal case w/o any races: We didn't send anything, and we received a new delta
         syncedDocument = syncedDocument.compose(parsedDelta);
         quill.updateContents(parsedDelta, 'silent');
+        // if (document.IS_REVERT) {
+        //     lastDeltaLength = quill.getLength()
+        // }
     }
     else if (isOwn === true) {
         // The very normal case w/o any races: We sent a delta, and we received that delta
@@ -445,6 +432,9 @@ function inOrderDeltaHandler(delta, isOwn, silent) {
         pendingDelta = parsedDelta.transform(pendingDelta, true);
         magicDelta = magicDelta.compose(pendingDelta)
         quill.updateContents(magicDelta);
+        // if (document.IS_REVERT) {
+        //     lastDeltaLength = quill.getLength()
+        // }
 
         syncedDocument = syncedDocument.compose(parsedDelta);
 
@@ -466,15 +456,24 @@ function newDeltaHandler(statusCode, body) {
     let isOwn = body["isOwn"];
     let deltaVersion = body["version"];
     let newCursor = JSON.parse(body["message"]);
-
+    //console.log(body)
+  
     if (!isOwn) {
         newBroadcastHandler(statusCode, body, newCursor);
     }
 
     while (deltaVersion >= allDeltas.length) allDeltas.push(undefined); // Fill it with empty deltas till we reach the correct size
 
-    if (deltaVersion < syncedVersion) // How did we receive a delta twice?
-        console.error("UNEXPECTED CASE", syncedVersion, deltaVersion, isOwn, delta, pendingDelta, allDeltas)
+    if (deltaVersion < syncedVersion) { // How did we receive a delta twice?
+
+        if (document.IS_REVERT) {  // In Older Version and Got Delta
+            docLastDeltaNum = deltaVersion+1;
+            verionSlider.max = deltaVersion+1;
+            }
+        else {
+            console.error("UNEXPECTED CASE", syncedVersion, deltaVersion, isOwn, delta, pendingDelta, allDeltas)
+        }
+    }
     else if (deltaVersion > syncedVersion) {
         // Out of order receipt of deltas (might happen in the case of different execution times of the lambda functions)
         console.warn(`Out-of-order delta version ${deltaVersion} (expected ${syncedVersion})`)
@@ -486,10 +485,28 @@ function newDeltaHandler(statusCode, body) {
 
         for (let i = syncedVersion; i < allDeltas.length; i++) {
             if (!document.IS_IFRAME) {
-                console.log(syncedVersion);
+                if (!document.IS_REVERT){
+                //console.log(syncedVersion);
+                }
             }
             if (allDeltas[i] === undefined) break;
+
             syncedVersion++;
+            if (document.IS_REVERT && (currentDocumentDeltaNum === syncedVersion-1)) {      
+                //console.log(currentDocumentDeltaNum)             
+                //console.log(deltaVersion,syncedVersion);
+                docLastDeltaNum = syncedVersion;
+                verionSlider.max = syncedVersion;
+                verionSlider.value = syncedVersion;
+                valBox.innerHTML= `Version: ${syncedVersion}`;
+                currentDocumentDeltaNum = syncedVersion;
+
+            } else if (document.IS_REVERT) {
+                //console.log("here");
+                docLastDeltaNum = syncedVersion;
+                verionSlider.max = syncedVersion;
+                return;
+            }
 
             let silent = i < allDeltas.length - 1 && allDeltas[i + 1] !== undefined;
             inOrderDeltaHandler(allDeltas[i]["delta"], allDeltas[i]["isOwn"], silent);
@@ -554,16 +571,5 @@ function textChangeHandler(delta, oldDelta, source) {
     }
 }
 
-/*function mazenVersioning(documentName,version){
-
-    // open document but passes version and c
-    //join doc
-
-    //get the deltas
-    AWS.call("getDeltas")
-}
-*/
-// const AWS = new Remote(openHandler, messageHandler);
-// window.textChangeHandler = textChangeHandler;
 const AWS = new Remote(openHandler, messageHandler);
 window.textChangeHandler = textChangeHandler;
