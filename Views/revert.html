@@ -100,13 +100,14 @@
           value="Revert"
           style="width: 50%; height: 100%; margin: 0 auto"
           onclick='
+          if (confirm("Are you sure you would like to revert to the displayed version ?")) {
           emptyDocDelta = new Delta();
           //console.log(emptyDocDelta);
           emptyDocDelta.ops[0] = {delete: lastDeltaLength};
           //console.log(emptyDocDelta);
           //console.log(emptyDocDelta.compose(currentDocument));
           AWS.call("addDelta", { "documentVersion": docLastDeltaNum, "message": JSON.stringify(new Cursor("notInDocument")), "delta": JSON.stringify(emptyDocDelta.compose(currentDocument))});
-          window.location.assign(pathRoot+"/views/document.html?doc="+ decodeURI(location.href.split("doc=")[1]));'
+          window.location.assign(pathRoot+"/views/document.html?doc="+ decodeURI(location.href.split("doc=")[1]));}'
         />
       </div>
       <br />
