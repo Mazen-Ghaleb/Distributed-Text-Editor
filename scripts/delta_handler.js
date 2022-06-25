@@ -214,22 +214,20 @@ function generateCardsForAllDocuments(documents) {
                 <iframe src="${pathRoot}/views/document.html?iframe=y?doc=${doc.documentName}" scrolling="no" style="overflow:hidden; width:100%; height:100%;border:none;" title="${doc.documentName}"></iframe> 
                 <div class="card-body">
                     <a href='${pathRoot}/views/document.html?doc=${doc.documentName}'>
-                        <h5 id="card" class="card-title">${doc.documentName}</h5>
+                        <h5 id="card" class="card-title" style="height:6em; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical ">${doc.documentName}</h5>
                     </a>
                     <div style="display: inline-block;">
-                        <p id="cardDate" class="card-text" style="display: inline-block;"><img id="cardDocumentIcon" alt="Document" src="${pathRoot}/media/document.png" style="height:2; width:2em; display: inline-block;">${displayedDate} <!-- Default dropup button -->
-                            <div class="btn-group dropup">
-                                <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                    Dropup
-                                </button>
-                                <div class="dropdown-menu">
-                                    <!-- Dropdown menu links -->
-                                    <a class="dropdown-item" href="${pathRoot}/views/revert.html?doc=${doc.documentName}">Revert Version</a>
-                                    <a class="dropdown-item" href="#">Rename</a>
-                                    <a class="dropdown-item" href="#">Delete</a>
-                                </div>
-                            </div>            
-                        </p>
+                        <p id="cardDate" class="card-text" style="display: inline-block;"><img id="cardDocumentIcon" alt="Document" src="${pathRoot}/media/document.png" style="height:2; width:2em; display: inline-block;">${displayedDate}  </p> 
+                        <!-- Default dropup button -->
+                        <div class="btn-group dropup docMenu">
+                            <input type="image" class="btn dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"" alt="Edit" src="${pathRoot}/media/tripleDot.png">
+                            <div class="dropdown-menu">
+                                <!-- Dropdown menu links -->
+                                <a class="dropdown-item" href="${pathRoot}/views/revert.html?doc=${doc.documentName}">Revert Version</a>
+                                <a class="dropdown-item" href="#">Rename</a>
+                                <a class="dropdown-item" href="#">Delete</a>
+                            </div>
+                        </div>
                     </div>
                     <br>
                 </div>
@@ -256,7 +254,11 @@ function listDocumentsHandler(statusCode, body) {
                 currentDocumentSort = false;
             }
         }
-        if (!(allDocuments.filter(o1 => body["documents"].some(o2 => o1.documentName === o2.documentName)).length === body["documents"].length)) {
+        //console.log(allDocuments,body["documents"]);
+        let x = allDocuments.filter(o1 => body["documents"].some(o2 => o1.documentName === o2.documentName)).length;
+        //console.log(x, allDocuments.length);
+        
+        if ((x !== allDocuments.length) || (x !== body["documents"].length)) {
             generateCardsForAllDocuments(body["documents"]);
             allDocuments = body["documents"];
         }
