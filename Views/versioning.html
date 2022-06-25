@@ -5,10 +5,10 @@
     <script>
       let docLastDeltaNum = undefined;
       let allDocuments = [];
-      let currentDocument = undefined;
+      let currentDocumentDelta = undefined;
       let currentDocumentDeltaNum = undefined; // corresponds to Delta displayed (slider maybe changed after display so we need this var)
       let lastDeltaLength = 5000000;
-      document.IS_REVERT = true;
+      document.IS_VERSIONING = true;
     </script>
     <script src="../scripts/index.js"></script>
     <meta charset="UTF-8" />
@@ -42,6 +42,27 @@
   <body>
     <script>
       generateNavBar();
+      function createVersion() {
+        if (confirm('Are you sure you would like to create new document for the displayed version ?')) {
+          let documentNewName = prompt('Please enter your new document name for the displayed version');
+          if (documentNewName !== null) {
+            console.log(
+              `"newDocumentVersion", { "documentOldName": "${decodeURI(
+                location.href.split('doc=')[1]
+              )}", "documentNewName": "${documentNewName}","documentDelta": ${JSON.stringify(
+                currentDocumentDelta
+              )}, "documentVersion": ${JSON.stringify(currentDocumentDeltaNum)} }`
+            );
+            AWS.call('newDocumentVersion', {
+              documentOldName: decodeURI(location.href.split('doc=')[1]),
+              documentNewName: documentNewName,
+              documentDelta: JSON.stringify(currentDocumentDelta),
+              documentVersion: JSON.stringify(currentDocumentDeltaNum),
+            });
+            window.location.assign(pathRoot + '/views/document.html?doc=' + documentNewName);
+          }
+        }
+      }
     </script>
     <script>
       documentName = decodeURI(location.href.split('=')[1]);
@@ -97,7 +118,7 @@
       <div style="padding-left: 2%">
         <input
           type="button"
-          value="Revert"
+          value="Revert document to this version"
           style="width: 50%; height: 100%; margin: 0 auto"
           onclick='
           if (confirm("Are you sure you would like to revert to the displayed version ?")) {
@@ -105,9 +126,17 @@
           //console.log(emptyDocDelta);
           emptyDocDelta.ops[0] = {delete: lastDeltaLength};
           //console.log(emptyDocDelta);
-          //console.log(emptyDocDelta.compose(currentDocument));
-          AWS.call("addDelta", { "documentVersion": docLastDeltaNum, "message": JSON.stringify(new Cursor("notInDocument")), "delta": JSON.stringify(emptyDocDelta.compose(currentDocument))});
+          //console.log(emptyDocDelta.compose(currentDocumentDelta));
+          AWS.call("addDelta", { "documentVersion": docLastDeltaNum, "message": JSON.stringify(new Cursor("notInDocument")), "delta": JSON.stringify(emptyDocDelta.compose(currentDocumentDelta))});
           window.location.assign(pathRoot+"/views/document.html?doc="+ decodeURI(location.href.split("doc=")[1]));}'
+        />
+        <br />
+        <br />
+        <input
+          type="button"
+          value="Create new document with this version"
+          style="width: 50%; height: 100%; margin: 0 auto"
+          onclick="createVersion()"
         />
       </div>
       <br />

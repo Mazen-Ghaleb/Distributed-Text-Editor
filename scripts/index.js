@@ -18,7 +18,7 @@ function generateNavBar() {
       "justify-content-between"
     );
     nav.innerHTML = `<a class="navbar-brand" href="${pathRoot}/index.html">
-    <button class="btn btn-outline-primary my-2 my-sm-0" style="border:none; color:lightblue;" id="browseAllBooksBtn">Shared Document Editor</button></a>
+    <button class="btn btn-outline-primary my-2 my-sm-0" style="border:none; color:lightblue;" id="HomePageButton">Shared Document Editor</button></a>
 
       </div>
       <div style="display:inline;width:45%;" id="searchContainer">

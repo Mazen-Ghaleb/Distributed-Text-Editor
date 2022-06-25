@@ -53,7 +53,7 @@ function getMyCursor() {
 
 function sendCursorChanges() {
     if (!document.IS_IFRAME) {
-        if (!document.IS_REVERT){
+        if (!document.IS_VERSIONING){
         //console.log("sendCursorChanges")
         }
     }
@@ -84,7 +84,7 @@ function newBroadcastHandler(statusCode, body, newCursor = null) {
     else {
         ver = body["version"];
         if (!document.IS_IFRAME) {
-            if (!document.IS_REVERT){
+            if (!document.IS_VERSIONING){
             //console.log(newCursor)
             }
         }
@@ -92,7 +92,7 @@ function newBroadcastHandler(statusCode, body, newCursor = null) {
 
     let id = body["connectionId"];
     if (!document.IS_IFRAME) {
-        if (!document.IS_REVERT){
+        if (!document.IS_VERSIONING){
         //console.log(newCursor, userDict, id)
         }
     }
@@ -102,8 +102,8 @@ function newBroadcastHandler(statusCode, body, newCursor = null) {
         userDict[id] = "User " + userCounter;
     }
     //console.log(currentDocumentDeltaNum,docLastDeltaNum,ver)
-    //if (!document.IS_REVERT || ((document.IS_REVERT && docLastDeltaNum === ver) && currentDocumentDeltaNum === ver )){
-    if (!document.IS_REVERT || (document.IS_REVERT && currentDocumentDeltaNum === ver )){
+    //if (!document.IS_VERSIONING || ((document.IS_VERSIONING && docLastDeltaNum === ver) && currentDocumentDeltaNum === ver )){
+    if (!document.IS_VERSIONING || (document.IS_VERSIONING && currentDocumentDeltaNum === ver )){
 
         cursorManager.createCursor(id, userDict[id], generateRandomColor()); //Creates cursor if doesn't exist
 
@@ -123,7 +123,7 @@ function newBroadcastHandler(statusCode, body, newCursor = null) {
             cursorManager.update();
         }
     }
-    else { // IN REVERT but not last delta
+    else { // IN VERSIONING but not last delta
         cursorManager.toggleFlag(id, false);
         //cursorManager.removeCursor(id);
         //cursorManager.clearCursors();
@@ -178,8 +178,8 @@ function createDocumentHandler() {
         alertError("Please enter the new document's name")
         return false;
     }
-
-    AWS.call("newDocument", { "documentName": documentName.value });
+    newDocumentName = documentName.value;
+    AWS.call("newDocument", { "documentName": newDocumentName});
     clearInterval(SelectionInterval);
     return false;
 }
@@ -198,8 +198,11 @@ function newDocumentHandler(statusCode, body) {
     }
     //console.log(body);
     alertSuccess("Document created");
-    window.location.assign(pathRoot+'/views/document.html?doc='+ documentName.value)
-    editUI.style.display = "block";
+    if (document.IS_INDEX){
+        window.location.assign(pathRoot+'/views/document.html?doc='+newDocumentName)   
+        //window.location.assign(pathRoot+'/views/document.html?doc='+ documentName.value)
+        editUI.style.display = "block";
+    }
 }
 
 function generateCardsForAllDocuments(documents) {
@@ -225,13 +228,20 @@ function generateCardsForAllDocuments(documents) {
                             <input type="image" class="btn dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"" alt="Edit" src="${pathRoot}/media/tripleDot.png">
                             <div class="dropdown-menu">
                                 <!-- Dropdown menu links -->
-                                <a class="dropdown-item" href="${pathRoot}/views/revert.html?doc=${doc.documentName}">Revert Version</a>
+                                <a class="dropdown-item" href="${pathRoot}/views/versioning.html?doc=${doc.documentName}">Version Document</a>
                                 <a class="dropdown-item" href="javascript:;" onclick='
                                 let documentNewName= prompt("Please enter your new document name");
                                 if (documentNewName !== null) {
                                 AWS.call("renameDocument", { "documentOldName": "${doc.documentName}", "documentNewName": documentNewName });
                                 }'>Rename</a>
+                                <a class="dropdown-item" href="javascript:;" onclick='
+                                let documentNewName= prompt("Please enter your new document name");
+                                if (documentNewName !== null) {
+                                AWS.call("duplicateDocument", { "documentOldName": "${doc.documentName}", "documentNewName": documentNewName });
+                                newDocumentName = documentNewName;
+                                }'>Duplicate</a>
                                 <a class="dropdown-item" href="javascript:;" onclick='AWS.call("deleteDocument", { "documentName": "${doc.documentName}" });'>Delete</a>
+                                
                             </div>
                         </div>
                     </div>
@@ -283,7 +293,7 @@ function listDocumentsHandler(statusCode, body) {
             currentDocumentCards = [];
         }
         else {
-            ResultsHeader.style.display="intial";
+            ResultsHeader.style.display="block";
             if (document.SORT_DATE) {
                 search_results.sort(function (a, b) { return new Date(b.documentDate) - new Date(a.documentDate)});
                 if (currentDocumentSort === false){
@@ -308,11 +318,19 @@ function listDocumentsHandler(statusCode, body) {
     }
     else if (document.IS_DOC) {
         allDocuments = body["documents"];
+        if ((Object.keys(allDocuments).map(function (key) {
+            return allDocuments[key]["documentName"].indexOf(documentName) != -1;
+        }))){
         var script = document.createElement('script');
         script.innerHTML = `openDocumentHandler(decodeURI(location.href.split('doc=')[1]));`
         document.body.appendChild(script);
+        }
+        else {
+            let doucmentsDiv = document.getElementById("documents");
+            doucmentsDiv.innerHTML = '<h1 style="vertical-align:middle;text-align:center; color:black; margin-top:20%;">No Document Found with this name</h1>';
+        }
     }
-    else if (document.IS_REVERT) {
+    else if (document.IS_VERSIONING) {
         allDocuments = body["documents"];
         var script = document.createElement('script');
         script.innerHTML = `openDocumentHandler(decodeURI(location.href.split('doc=')[1]));`
@@ -346,7 +364,7 @@ function composeDocumentOnJoin(statusCode, body) {
         if (cursorInterval === undefined)
             (function () {
                 if (!document.IS_IFRAME) {
-                    if (!document.IS_REVERT){
+                    if (!document.IS_VERSIONING){
                     sendCursorChanges();
                     setTimeout(arguments.callee, 500);
                     }
@@ -363,10 +381,10 @@ function composeDocumentOnJoin(statusCode, body) {
             syncedVersion++;
         }
         quill.setContents(syncedDocument, 'silent');
-        if (document.IS_REVERT && docLastDeltaNum !== undefined) {
-            currentDocument = syncedDocument;
+        if (document.IS_VERSIONING && docLastDeltaNum !== undefined) {
+            currentDocumentDelta = syncedDocument;
             // lastDeltaLength = quill.getLength()
-            //console.log(currentDocument)
+            //console.log(currentDocumentDelta)
         }
     }
     else {
@@ -382,14 +400,14 @@ function composeDocumentOnJoin(statusCode, body) {
 function joinDocumentHandler(statusCode, body) {
     syncedDocument = new Delta();
     latestDelta = parseInt(body['documentVersion']);
-    if (document.IS_REVERT && docLastDeltaNum === undefined) {
+    if (document.IS_VERSIONING && docLastDeltaNum === undefined) {
         currentDocumentDeltaNum = latestDelta; 
         docLastDeltaNum = latestDelta;
         verionSlider.max = latestDelta;
         verionSlider.value = latestDelta;
         valBox.innerHTML= `Version: ${latestDelta}`;
         valBox.style.display = 'initial';
-    } else if (document.IS_REVERT) {
+    } else if (document.IS_VERSIONING) {
         latestDelta = verionSlider.value;
         currentDocumentDeltaNum = verionSlider.value;
     }
@@ -403,7 +421,7 @@ function joinDocumentHandler(statusCode, body) {
         if (cursorInterval === undefined)
             (function () {
                 if (!document.IS_IFRAME) {
-                    if (!document.IS_REVERT){
+                    if (!document.IS_VERSIONING){
                     sendCursorChanges();
                     setTimeout(arguments.callee, 500);
                     }
@@ -419,7 +437,7 @@ function joinDocumentHandler(statusCode, body) {
         AWS.call("getDeltas", { "oldVersion": 0, "newVersion": 100 })
     }
     if (!document.IS_IFRAME) {
-        if (!document.IS_REVERT){
+        if (!document.IS_VERSIONING){
         sendCursorChanges();
         }
     }
@@ -440,7 +458,7 @@ function inOrderDeltaHandler(delta, isOwn, silent) {
         // The very normal case w/o any races: We didn't send anything, and we received a new delta
         syncedDocument = syncedDocument.compose(parsedDelta);
         quill.updateContents(parsedDelta, 'silent');
-        // if (document.IS_REVERT) {
+        // if (document.IS_VERSIONING) {
         //     lastDeltaLength = quill.getLength()
         // }
     }
@@ -477,7 +495,7 @@ function inOrderDeltaHandler(delta, isOwn, silent) {
         pendingDelta = parsedDelta.transform(pendingDelta, true);
         magicDelta = magicDelta.compose(pendingDelta)
         quill.updateContents(magicDelta);
-        // if (document.IS_REVERT) {
+        // if (document.IS_VERSIONING) {
         //     lastDeltaLength = quill.getLength()
         // }
 
@@ -511,7 +529,7 @@ function newDeltaHandler(statusCode, body) {
 
     if (deltaVersion < syncedVersion) { // How did we receive a delta twice?
 
-        if (document.IS_REVERT) {  // In Older Version and Got Delta
+        if (document.IS_VERSIONING) {  // In Older Version and Got Delta
             docLastDeltaNum = deltaVersion+1;
             verionSlider.max = deltaVersion+1;
             }
@@ -530,14 +548,14 @@ function newDeltaHandler(statusCode, body) {
 
         for (let i = syncedVersion; i < allDeltas.length; i++) {
             if (!document.IS_IFRAME) {
-                if (!document.IS_REVERT){
+                if (!document.IS_VERSIONING){
                 //console.log(syncedVersion);
                 }
             }
             if (allDeltas[i] === undefined) break;
 
             syncedVersion++;
-            if (document.IS_REVERT && (currentDocumentDeltaNum === syncedVersion-1)) {      
+            if (document.IS_VERSIONING && (currentDocumentDeltaNum === syncedVersion-1)) {      
                 //console.log(currentDocumentDeltaNum)             
                 //console.log(deltaVersion,syncedVersion);
                 docLastDeltaNum = syncedVersion;
@@ -546,7 +564,7 @@ function newDeltaHandler(statusCode, body) {
                 valBox.innerHTML= `Version: ${syncedVersion}`;
                 currentDocumentDeltaNum = syncedVersion;
 
-            } else if (document.IS_REVERT) {
+            } else if (document.IS_VERSIONING) {
                 //console.log("here");
                 docLastDeltaNum = syncedVersion;
                 verionSlider.max = syncedVersion;
@@ -569,6 +587,7 @@ function deleteDocumentHandler(statusCode, body) {
         return;
     }
         alertSuccess("Deleted document successfully");
+        AWS.call('listDocuments');
 }
 function renameDocumentHandler(statusCode, body) {
     if (statusCode !== 200) {
@@ -576,8 +595,26 @@ function renameDocumentHandler(statusCode, body) {
         return;
     }
         alertSuccess("Renamed document successfully");
+        AWS.call('listDocuments');
 }
-
+function duplicateDocumentHandler(statusCode, body) {
+    if (statusCode !== 200) {
+        alertError("Could not duplicate document" + body);
+        return;
+    }
+        alertSuccess("Duplicated document successfully");
+        AWS.call('listDocuments');
+        if (document.IS_INDEX){
+        window.location.assign(pathRoot+'/views/document.html?doc='+newDocumentName)
+        }
+}
+function newDocumentVersionHandler(statusCode, body) {
+    if (statusCode !== 200) {
+        alertError("Could not create the version of this document" + body);
+        return;
+    }
+        alertSuccess("Created new version of document successfully");
+}
 function messageHandler(message) {
     let statusCode = message.statusCode;
     let body = message.body;
@@ -609,6 +646,12 @@ function messageHandler(message) {
             break;
         case "renameDocument":
             renameDocumentHandler(statusCode, body);
+            break;
+        case "duplicateDocument":
+            duplicateDocumentHandler(statusCode, body);
+            break;
+        case "newDocumentVersion":
+            newDocumentVersionHandler(statusCode, body);
             break;
         default:
             console.error(`Unknown Action \"${message.action}\"`)

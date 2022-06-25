@@ -109,6 +109,39 @@ const newDocument = async(connectionId, body) => {
     }
 }
 
+const newDocumentVersion = async(connectionId, body) => {
+    if(!body.hasOwnProperty("documentOldName")) return error("No Old documentName")
+    if(!body.hasOwnProperty("documentNewName")) return error("No New documentName")
+    try
+    {
+        const doc = await ddbClient.get({
+            TableName: "shared-docs-documents",
+            Key: { 'documentName': body.documentOldName },
+        }).promise();
+        if(!doc.Item) return error("Couldn't find document with that name")
+     
+        await ddbClient.put({
+            TableName: "shared-docs-documents",
+            Item: {
+                "documentName": body.documentNewName,
+                "documentVersion": doc.Item["documentVersion"],
+                "documentDeltas": [body.documentDelta],
+                "documentUsers": doc.Item["documentUsers"],
+                "documentDate": new Date().toUTCString(),
+            },
+            ConditionExpression:"attribute_not_exists(body.documentNewName)",
+        }).promise();
+         
+        return success({})
+    }
+    catch(err)
+    {
+        if (err.name !== 'ConditionalCheckFailedException')  throw err;
+        
+        return error("Document with that name exists")
+    }
+}
+
 const deleteDocument = async(connectionId, body) => {
     if(!body.hasOwnProperty("documentName")) return error("No documentName")
     
@@ -143,6 +176,39 @@ const deleteDocument = async(connectionId, body) => {
         if (err.name !== 'ConditionalCheckFailedException')  throw err;
         
         return error("Couldn't find document with that name")
+    }
+}
+
+const duplicateDocument = async(connectionId, body) => {
+    if(!body.hasOwnProperty("documentOldName")) return error("No Old documentName")
+    if(!body.hasOwnProperty("documentNewName")) return error("No New documentName")
+    try
+    {
+        const doc = await ddbClient.get({
+            TableName: "shared-docs-documents",
+            Key: { 'documentName': body.documentOldName },
+        }).promise();
+        if(!doc.Item) return error("Couldn't find document with that name")
+     
+        await ddbClient.put({
+            TableName: "shared-docs-documents",
+            Item: {
+                "documentName": body.documentNewName,
+                "documentVersion": doc.Item["documentVersion"],
+                "documentDeltas": doc.Item["documentDeltas"],
+                "documentUsers": doc.Item["documentUsers"],
+                "documentDate": new Date().toUTCString(),
+            },
+            ConditionExpression:"attribute_not_exists(body.documentNewName)",
+        }).promise();
+         
+        return success({})
+    }
+    catch(err)
+    {
+        if (err.name !== 'ConditionalCheckFailedException')  throw err;
+        
+        return error("Document with that name exists")
     }
 }
 
@@ -420,6 +486,12 @@ const defaultHandler = async(connectionId, body) => {
             break;
         case "renameDocument": 
             documentResult = await renameDocument(connectionId, body);
+            break;
+        case "duplicateDocument": 
+            documentResult = await duplicateDocument(connectionId, body);
+            break;
+        case "newDocumentVersion":
+            documentResult = await newDocumentVersion(connectionId, body);
             break;
         default:
             return error("Invalid action");

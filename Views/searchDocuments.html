@@ -42,6 +42,10 @@
   </head>
   <body>
     <script>
+      function updateDocuments() {
+        AWS.call('listDocuments');
+      }
+      var SelectionInterval = setInterval(updateDocuments, 5000);
       generateNavBar();
     </script>
     <div class="alert" style="display: none">
@@ -57,30 +61,15 @@
     </div>
 
     <div id="documents">
-      <div id="ResultsHeader">
+      <div id="ResultsHeader" style="display: none">
         <h3 style="display: inline-block">Results found:</h3>
         <div class="dropdown" style="display: inline-block; position: absolute; right: 50%">
           <button class="btn btn-secondary" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
             <img id="sortIcon" alt="Sort" src="../media/sort.png" style="width: 2em; height: 2em" />
           </button>
           <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-            <a
-              class="dropdown-item"
-              href="javascript:;"
-              onclick="document.SORT_DATE = false; generateCardsForAllDocuments(allDocuments);"
-              ;
-              value="name"
-              ;
-              >Name</a
-            >
-            <a
-              class="dropdown-item"
-              href="javascript:;"
-              onclick="document.SORT_DATE = true; generateCardsForAllDocuments(allDocuments);"
-              ;
-              value="date"
-              >Date</a
-            >
+            <a class="dropdown-item" href="javascript:;" onclick="document.SORT_DATE = false; updateDocuments();" ; value="name" ;>Name</a>
+            <a class="dropdown-item" href="javascript:;" onclick="document.SORT_DATE = true; updateDocuments();" ; value="date">Date</a>
           </div>
         </div>
       </div>
@@ -134,11 +123,5 @@
     </script>
     <script src="../scripts/remote.js"></script>
     <script src="../scripts/delta_handler.js"></script>
-    <script>
-      function updateDocuments() {
-        AWS.call('listDocuments');
-      }
-      var SelectionInterval = setInterval(updateDocuments, 5000);
-    </script>
   </body>
 </html>
