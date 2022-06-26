@@ -24,7 +24,8 @@ let cursorInterval = undefined;
 
 let isDisconnected = false;
 
-function Cursor(type, index, length) {
+function Cursor(type,userName, index, length) {
+    this.userName = userName;
     this.type = type;
     this.index = index;
     this.length = length;
@@ -32,22 +33,23 @@ function Cursor(type, index, length) {
 }
 
 function getMyCursor() {
+    loggedAccount = JSON.parse(localStorage.getItem("AccLoggedIn"));
     let range = quill.getSelection();
     let cursor;
     if (range) {
         if (range.length == 0) {
             // User cursor is on index
-            cursor = new Cursor("atIndex", range.index, range.length);
+            cursor = new Cursor("atIndex",loggedAccount.userName, range.index, range.length);
             //AWS.call("sendBroadcast", { "message": JSON.stringify(cursor)})
         } else {
             // User has highlighted
-            cursor = new Cursor("highlight", range.index, range.length);
+            cursor = new Cursor("highlight",loggedAccount.userName, range.index, range.length);
             // AWS.call("sendBroadcast", { "message": JSON.stringify(cursor)})
         }
     }
     else {
         // Cursor not in the editor
-        cursor = new Cursor("notInDocument");
+        cursor = new Cursor("notInDocument",loggedAccount.userName);
         //AWS.call("sendBroadcast", { "message": JSON.stringify(cursor)})
     }
     return cursor;
@@ -101,7 +103,8 @@ function newBroadcastHandler(statusCode, body, newCursor = null) {
 
     if (!(id in userDict)) {
         userCounter++;
-        userDict[id] = "User " + userCounter;
+        userDict[id] = newCursor.userName;
+        //userDict[id] = "User " + userCounter;
     }
     //console.log(currentDocumentDeltaNum,docLastDeltaNum,ver)
     //if (!document.IS_VERSIONING || ((document.IS_VERSIONING && docLastDeltaNum === ver) && currentDocumentDeltaNum === ver )){
@@ -165,6 +168,9 @@ function openDocumentHandler(documentName) {
     return allDocuments[k]["documentName"] === documentName;});
     if (exists)
     {
+        currentOpenedDocumentName = documentName;
+        setInterval(updateDocuments, 1000);
+        setInterval(checkDocumentDeletion,1000);
         documentsUI.style.display = "none";
         //console.log(documentName)
         loggedAccount = JSON.parse(localStorage.getItem("AccLoggedIn"));

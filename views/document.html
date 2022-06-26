@@ -4,6 +4,7 @@
     <title>Shared Document Editor</title>
     <script>
       let loggedAccount = undefined;
+      let currentOpenedDocumentName = undefined;
       let allDocuments = [];
       document.IS_DOC = true;
       if (decodeURI(location.href.split('iframe=')[1]).charAt(0) === 'y') {

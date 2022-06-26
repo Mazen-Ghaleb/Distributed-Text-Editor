@@ -51,6 +51,17 @@ function generateNav() {
     return navDiv;
 }
 
+function checkDocumentDeletion(){
+  if (currentOpenedDocumentName !== undefined){
+    let exists = Object.keys(allDocuments).some((k) => {
+      return allDocuments[k]["documentName"] === currentOpenedDocumentName;});
+    if (!exists){
+      alertError("Document got deleted");
+      window.location.assign(pathRoot);
+    }
+  }
+}
+
 function checkLogged(){
   if (JSON.parse(localStorage.getItem("LoggedIn")) === "True") {
     if(document.IS_SIGN){
@@ -74,6 +85,11 @@ function sign_out(){
   document.getElementsByTagName("nav")[0].remove();
   document.body.prepend(generateNav());
   checkLogged();
+}
+
+function updateDocuments() {
+  loggedAccount = JSON.parse(localStorage.getItem('AccLoggedIn'));
+  AWS.call('listDocuments', { userName: loggedAccount.userName });
 }
 
 function display_account_data(goBack) {

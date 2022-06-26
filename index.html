@@ -7,6 +7,7 @@
       document.SORT_DATE = true;
       let loggedAccount = undefined;
       let newDocumentName = '';
+      let currentOpenedDocumentName = undefined;
       let currentDocumentSort = false;
       let currentDocumentCards;
       let allDocuments = [];
@@ -42,10 +43,6 @@
   </head>
   <body>
     <script>
-      function updateDocuments() {
-        loggedAccount = JSON.parse(localStorage.getItem('AccLoggedIn'));
-        AWS.call('listDocuments', { userName: loggedAccount.userName });
-      }
       var SelectionInterval = setInterval(updateDocuments, 5000);
       generateNavBar();
     </script>
@@ -62,7 +59,6 @@
     </div>
 
     <div id="documents">
-      <!-- <form onsubmit="return openDocumentHandler(this)"> -->
       <h3 style="display: inline-block">Open Existing Document:</h3>
       <div class="dropdown" style="display: inline-block; position: absolute; right: 50%">
         <button class="btn btn-secondary" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
