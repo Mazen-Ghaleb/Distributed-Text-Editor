@@ -178,11 +178,11 @@ function openDocumentHandler(documentName) {
 }
 
 function createDocumentHandler() {
-    documentsUI.style.display = "none";
     if (documentName.value === "") {
         alertError("Please enter the new document's name")
         return false;
     }
+    documentsUI.style.display = "none";
     newDocumentName = documentName.value;
     AWS.call("newDocument", { "documentName": newDocumentName});
     clearInterval(SelectionInterval);
@@ -199,6 +199,7 @@ function openHandler() {
 function newDocumentHandler(statusCode, body) {
     if (statusCode !== 200) {
         alertError("Could not create document: " + body);
+        documentsUI.style.display = "block";
         return;
     }
     //console.log(body);

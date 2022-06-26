@@ -46,13 +46,6 @@
         if (confirm('Are you sure you would like to create new document for the displayed version ?')) {
           let documentNewName = prompt('Please enter your new document name for the displayed version');
           if (documentNewName !== null) {
-            console.log(
-              `"newDocumentVersion", { "documentOldName": "${decodeURI(
-                new URL(location.href).searchParams.get('doc')
-              )}", "documentNewName": "${documentNewName}","documentDelta": ${JSON.stringify(
-                currentDocumentDelta
-              )}, "documentVersion": ${JSON.stringify(currentDocumentDeltaNum)} }`
-            );
             AWS.call('newDocumentVersion', {
               documentOldName: decodeURI(location.href.split('doc=')[1]),
               documentNewName: documentNewName,
@@ -124,13 +117,14 @@
           style="width: 50%; height: 100%; margin: 0 auto"
           onclick='
           if (confirm("Are you sure you would like to revert to the displayed version ?")) {
-          emptyDocDelta = new Delta();
-          //console.log(emptyDocDelta);
-          emptyDocDelta.ops[0] = {delete: lastDeltaLength};
-          //console.log(emptyDocDelta);
-          //console.log(emptyDocDelta.compose(currentDocumentDelta));
-          AWS.call("addDelta", { "documentVersion": docLastDeltaNum, "message": JSON.stringify(new Cursor("notInDocument")), "delta": JSON.stringify(emptyDocDelta.compose(currentDocumentDelta))});
-          window.location.assign(pathRoot+"/views/document.html?doc="+ new URL(location.href).searchParams.get("doc"));}'
+            emptyDocDelta = new Delta();
+            //console.log(emptyDocDelta);
+            emptyDocDelta.ops[0] = {delete: lastDeltaLength};
+            //console.log(emptyDocDelta);
+            //console.log(emptyDocDelta.compose(currentDocumentDelta));
+            AWS.call("addDelta", { "documentVersion": docLastDeltaNum, "message": JSON.stringify(new Cursor("notInDocument")), "delta": JSON.stringify(emptyDocDelta.compose(currentDocumentDelta))});
+            window.location.assign(pathRoot+"/views/document.html?doc="+ decodeURI(location.href.split("doc=")[1]));}
+            '
         />
         <br />
         <br />
