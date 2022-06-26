@@ -686,6 +686,34 @@ function clientDisconnectHandler(statusCode,body){
     cursorManager.removeCursor(disconnectedId);
 }
 
+function createAccountHandler(statusCode, body) {
+    if (statusCode !== 200) {
+        alertError("Could not create the account " + body);
+        return;
+    }
+        alertSuccess("Created new account");
+        window.location.assign(pathRoot)
+}
+
+function loginAccountHandler(statusCode, body) {
+    if (statusCode !== 200) {
+        alertError("Could not login " + body);
+        return;
+    }
+        alertSuccess("Loggged in successfully");
+        window.location.assign(pathRoot)
+}
+
+function changeAccountPasswordHandler(statusCode, body) {
+    if (statusCode !== 200) {
+        alertError("Could not change password " + body);
+        return;
+    }
+        alertSuccess("Changed Passwored");
+        window.location.assign(pathRoot+'/views/SignIn.html')
+}
+
+
 function messageHandler(message) {
     let statusCode = message.statusCode;
     let body = message.body;
@@ -726,6 +754,15 @@ function messageHandler(message) {
             break;
         case "clientDisconnect":
             clientDisconnectHandler(statusCode,body);
+            break;
+        case "createAccount":
+            createAccountHandler(statusCode,body);
+            break;
+        case "loginAccount":
+            loginAccountHandler(connectionId, body);
+            break;
+        case "changeAccountPassword":
+            changeAccountPasswordHandler(statusCode,body);
             break;
         default:
             console.error(`Unknown Action \"${message.action}\"`)

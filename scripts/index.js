@@ -39,8 +39,6 @@ function generateNavBar() {
     document.body.append(nav);
 }
 
-
-
 let pathRoot = "..";
 if(document.IS_INDEX) pathRoot = ".";
 

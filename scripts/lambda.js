@@ -95,13 +95,6 @@ const newDocument = async(connectionId, body) => {
         }).promise();
         if(old.Attributes["documentName"] == body.documentName) return success({})
         
-        // await ddbClient.update({
-        //     TableName: "shared-docs-documents",
-        //     Key: { 'documentName': old.Attributes["documentName"] },
-        //     UpdateExpression: "DELETE documentUsers :u",
-        //     ExpressionAttributeValues: { ':u': ddbClient.createSet(connectionId) },
-        // }).promise();
-        
         return success({})
     }
     catch(err)
@@ -155,22 +148,6 @@ const deleteDocument = async(connectionId, body) => {
             Key: {"documentName": body.documentName},
             ConditionExpression:"attribute_exists(documentName)",
         }).promise();
-        
-    //   const old = await ddbClient.update({
-    //         TableName: "shared-docs-users",
-    //         Key: { connectionId: connectionId },
-    //         UpdateExpression: "SET documentName = :u",
-    //         ExpressionAttributeValues: { ':u': body.documentName },
-    //         ReturnValues: 'ALL_OLD'
-    //     }).promise();
-    //     if(old.Attributes["documentName"] == body.documentName) return success({})
-        
-        // await ddbClient.update({
-        //     TableName: "shared-docs-documents",
-        //     Key: { 'documentName': old.Attributes["documentName"] },
-        //     UpdateExpression: "DELETE documentUsers :u",
-        //     ExpressionAttributeValues: { ':u': ddbClient.createSet(connectionId) },
-        // }).promise();
         
         return success({})
     }
@@ -242,16 +219,7 @@ const renameDocument = async(connectionId, body) => {
             TableName: "shared-docs-documents",
             Key: {"documentName": body.documentOldName},
         }).promise();
-
-
-        // await ddbClient.update({
-        //     TableName: "shared-docs-documents",
-        //     Key: {"documentName": body.documentOldName},
-        //     UpdateExpression: "SET documentName = :u",
-        //     ExpressionAttributeValues: { ':u': body.documentNewName },
-        //     ConditionExpression:"attribute_exists(documentOldName)",
-        // }).promise();
-         
+        
         return success({})
     }
     catch(err)
@@ -303,39 +271,6 @@ const joinDocument = async(connectionId, body) => {
         ExpressionAttributeValues: { ':u': ddbClient.createSet(connectionId) },
     }).promise();
     
-    // try
-    // {
-    //     await ddbClient.update({
-    //         "TableName": "shared-docs-documents",
-    //         Key: { 'documentName': old.Attributes["documentName"] },
-    //         UpdateExpression: "ADD documentUsers :u",
-    //         ExpressionAttributeValues: { ':u': ddbClient.createSet(connectionId) },
-    //         ConditionExpression: "documentName = :n AND NOT contains(students, :student)",
-    //     }).promise();
-    // }
-    // catch(ConditionalCheckFailedException)
-    // {
-    //     error("document with given documentName does not exist")
-    // }
-    
-    // const old = await ddbClient.update({
-    //     "TableName": "shared-docs-users",
-    //     Key: { connectionId: connectionId },
-    //     UpdateExpression: "SET documentName = :u",
-    //     ExpressionAttributeValues: { ':u': body.documentName },
-    //     ReturnValues: 'ALL_OLD'
-    // }).promise();
-    
-    // if(old.Attributes && old.Attributes["documentName"])
-    // {
-    //     await ddbClient.update({
-    //         "TableName": "shared-docs-documents",
-    //         Key: { 'documentName': old.Attributes["documentName"] },
-    //         UpdateExpression: "DELETE documentUsers :u",
-    //         ExpressionAttributeValues: { ':u': ddbClient.createSet(connectionId) },
-    //     }).promise();
-    // }
-    
     return success({ "documentVersion": doc.Item["documentVersion"] })
 }
 
@@ -365,7 +300,6 @@ const addDelta = async(connectionId, body) => {
     {
         if (err.name !== 'ConditionalCheckFailedException')  throw err;
         accepted = false;
-        // LOG(ConditionalCheckFailedException)
     }
     
     if(accepted === true)
@@ -455,6 +389,112 @@ const broadcastMessage = async(connectionId, body) => {
     return undefined;
 }
 
+const createAccount = async(connectionId, body) => {
+    if(!body.hasOwnProperty("userName")) return error("No userName")
+    if(!body.hasOwnProperty("userAccountName")) return error("No userAccountName")
+    if(!body.hasOwnProperty("userEmail")) return error("No userEmail")
+    if(!body.hasOwnProperty("userPassword")) return error("No userPassword")
+    
+    try
+    {
+        await ddbClient.put({
+            TableName: "shared-docs-accounts",
+            Item: {
+                "userName": body.userName,
+                "userAccountName": body.userAccountName,
+                "userEmail": body.userEmail,
+                "userPassword": body.userPassword,
+                "creationDate": new Date().toUTCString
+            },
+            ConditionExpression:"attribute_not_exists(userName)",
+            ConditionExpression:"attribute_not_exists(userEmail)",
+        }).promise();
+        
+        const old = await ddbClient.update({
+            TableName: "shared-docs-users",
+            Key: { connectionId: connectionId },
+            UpdateExpression: "SET loggedAccountUsername = :u",
+            ExpressionAttributeValues: { ':u': body.userName },
+            ReturnValues: 'ALL_OLD'
+        }).promise();
+        if(old.Attributes["loggedAccount"] == body.userName) return success({})
+        
+        return success({})
+    }
+    catch(err)
+    {
+        if (err.name !== 'ConditionalCheckFailedException')  throw err;
+        
+        return error("An account with that User name or Email already exists")
+    }
+}
+
+const loginAccount = async(connectionId, body) => {
+    if(!body.hasOwnProperty("userName")) return error("No userName")
+    if(!body.hasOwnProperty("userPassword")) return error("No userPassword")
+    
+    try
+    {
+        const account = await ddbClient.get({
+            TableName: "shared-docs-accounts",
+            Key: { 'userName': body.userName },
+        }).promise();
+        if(!account.Item) return error("Couldn't find account with that name")
+        if(!account.Item["userPassword"] === body.userPassword) return error("Incorrect Password")
+        
+        const old = await ddbClient.update({
+            TableName: "shared-docs-users",
+            Key: { connectionId: connectionId },
+            UpdateExpression: "SET loggedAccountUsername = :u",
+            ExpressionAttributeValues: { ':u': body.userName },
+            ReturnValues: 'ALL_OLD'
+        }).promise();
+        if(old.Attributes["loggedAccount"] == body.userName) return success({})
+        
+        return success({})
+    }
+    catch(err)
+    {
+        if (err.name !== 'ConditionalCheckFailedException')  throw err;
+        
+        return error("An account with that User name or Email already exists")
+    }
+}
+
+const changeAccountPassword = async(connectionId, body) => {
+    if(!body.hasOwnProperty("userName")) return error("No userName")
+    if(!body.hasOwnProperty("userEmail")) return error("No userEmail")
+    if(!body.hasOwnProperty("userOldPassword")) return error("No userOldPassword")
+    if(!body.hasOwnProperty("userNewPassword")) return error("No userNewPassword")
+    try
+    {
+        const account =  await ddbClient.get({
+        TableName: "shared-docs-accounts",
+        Key: { 'userName': body.userName },
+        //ProjectionExpression: "userName"
+        }).promise();
+        
+        await ddbClient.update({
+            TableName: "shared-docs-accounts",
+            Key: { 'userName': account.Item["userName"] },
+            UpdateExpression: "SET userPassword = :n",
+            ExpressionAttributeValues: {':n': body.userNewPassword,':o': body.userOldPassword},
+            ConditionExpression:"userPassword = :o",
+            ConditionExpression:"attribute_exists(userName)",
+            ConditionExpression:"attribute_exists(userEmail)",
+        }).promise();
+        
+        return success({})
+    }
+    catch(err)
+    {
+        if (err.name !== 'ConditionalCheckFailedException')  throw err;
+        
+        return error("An account with that User name or Email doesn't exist \n OR Password doesn't match ")
+    }
+}
+
+
 const defaultHandler = async(connectionId, body) => {
     if(!body) return error("No body")
     
@@ -495,6 +535,15 @@ const defaultHandler = async(connectionId, body) => {
             break;
         case "newDocumentVersion":
             documentResult = await newDocumentVersion(connectionId, body);
+            break;
+        case "createAccount":
+            documentResult = await createAccount(connectionId, body);
+            break;
+        case "loginAccount":
+            documentResult = await loginAccount(connectionId, body);
+            break;
+        case "changeAccountPassword":
+            documentResult = await changeAccountPassword(connectionId, body);
             break;
         default:
             return error("Invalid action");
