@@ -168,9 +168,11 @@ function openDocumentHandler(documentName) {
     return allDocuments[k]["documentName"] === documentName;});
     if (exists)
     {
+        if (!document.IS_IFRAME) {
         currentOpenedDocumentName = documentName;
         setInterval(updateDocuments, 1000);
         setInterval(checkDocumentDeletion,1000);
+        }
         documentsUI.style.display = "none";
         //console.log(documentName)
         loggedAccount = JSON.parse(localStorage.getItem("AccLoggedIn"));
@@ -273,6 +275,11 @@ function generateCardsForAllDocuments(documents) {
                                 }'>Duplicate</a>
                                 <a class="dropdown-item" href="javascript:;" onclick='
                                 AWS.call("deleteDocument", { "documentName": "${doc.documentName}" ,"userName": "${loggedAccount.userName}"});'>Delete</a>
+                                <a class="dropdown-item" href="javascript:;" onclick='
+                                let newUserName= prompt("Please enter Username to share with");
+                                if (newUserName !== null) {
+                                AWS.call("shareDocument", { "documentName": "${doc.documentName}", "userName": "${loggedAccount.userName}","newUserName": newUserName });}
+                                '>Share</a>
                             </div>
                         </div>
                     </div>
@@ -739,20 +746,26 @@ function loginAccountHandler(statusCode, body) {
         navDiv.style.display = "block";
         return;
     }
-        localStorage.setItem("LoggedIn",JSON.stringify("True"));
-        localStorage.setItem("AccLoggedIn",(body["loggedAccount"]))
-        loggedAccount = JSON.parse(localStorage.getItem("AccLoggedIn"));
-        // console.log(loggedAccount)
-        // console.log(loggedAccount.userName, loggedAccount.userPassword)
-        display_account_data();
-        //document.getElementsByTagName("nav")[0].style.display="block";
-        navDiv.style.display = "block";
-        if (document.IS_SIGN){
-            alertSuccess("Loggged in successfully");
-            window.location.assign(pathRoot);
-        }
+    localStorage.setItem("LoggedIn",JSON.stringify("True"));
+    localStorage.setItem("AccLoggedIn",(body["loggedAccount"]))
+    loggedAccount = JSON.parse(localStorage.getItem("AccLoggedIn"));
+    // console.log(loggedAccount)
+    // console.log(loggedAccount.userName, loggedAccount.userPassword)
+    display_account_data();
+    //document.getElementsByTagName("nav")[0].style.display="block";
+    navDiv.style.display = "block";
+    if (document.IS_SIGN){
+        alertSuccess("Loggged in successfully");
+        window.location.assign(pathRoot);
+    }
 }
-
+function shareDocumentHandler(statusCode, body) {
+    if (statusCode !== 200) {
+        alertError("Could not share document " + body);
+        return;
+    }
+    alertSuccess("Shared Document successfully");
+}
 
 function changeAccountPasswordHandler(statusCode, body) {
     if (statusCode !== 200) {
@@ -766,7 +779,7 @@ function changeAccountPasswordHandler(statusCode, body) {
 function messageHandler(message) {
     let statusCode = message.statusCode;
     let body = message.body;
-    console.log(body)
+    //console.log(body)
     if (statusCode === 400) console.error(message)
     else body = JSON.parse(body);
 
@@ -797,6 +810,9 @@ function messageHandler(message) {
             break;
         case "duplicateDocument":
             duplicateDocumentHandler(statusCode, body);
+            break;
+        case "shareDocument":
+            shareDocumentHandler(statusCode, body);
             break;
         case "newDocumentVersion":
             newDocumentVersionHandler(statusCode, body);

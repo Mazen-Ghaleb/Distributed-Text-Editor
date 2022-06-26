@@ -43,7 +43,7 @@
         function login(userName,password) {    
           document.getElementById('CheckMail').innerHTML = '';
           document.getElementById('CheckPassword').innerHTML = '';
-          console.log({ "userName": userName, "userPassword": password})
+          //console.log({ "userName": userName, "userPassword": password})
           AWS.call("loginAccount", { "userName": userName, "userPassword": password})
 
           return false;

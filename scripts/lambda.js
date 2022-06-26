@@ -141,7 +141,7 @@ const newDocumentVersion = async(connectionId, body) => {
             TableName: "shared-docs-documents",
             Item: {
                 "documentName": body.documentNewName,
-                "documentVersion": doc.Item["documentVersion"],
+                "documentVersion": 1,
                 "documentDeltas": [body.documentDelta],
                 "documentUsers": doc.Item["documentUsers"],
                 "documentDate": new Date().toUTCString(),
@@ -244,6 +244,52 @@ const duplicateDocument = async(connectionId, body) => {
         return error("Document with that name exists")
     }
 }
+
+const shareDocument = async(connectionId, body) => {
+    if(!body.hasOwnProperty("documentName")) return error("No documentName")
+    if(!body.hasOwnProperty("userName")) return error("No userName")
+    if(!body.hasOwnProperty("newUserName")) return error("No newUserName")
+
+    try
+    {   
+        const account = await ddbClient.get({
+            TableName: "shared-docs-accounts",
+            Key: { 'userName': body.userName },
+        }).promise();
+        if(!account.Item) return error("Couldn't find account with that name")
+        
+        const newAccount = await ddbClient.get({
+            TableName: "shared-docs-accounts",
+            Key: { 'userName': body.newUserName },
+        }).promise();
+        if(!account.Item) return error("Couldn't find account to share with that name")
+
+        const doc = await ddbClient.get({
+            TableName: "shared-docs-documents",
+            Key: { 'documentName': body.documentName },
+        }).promise();
+        if(!doc.Item) return error("Couldn't find document with that name")
+        
+        let exists = doc["Item"]["documentUserAccounts"].includes(body.userName);
+        if (!exists) {
+            return error("Username doesn't have permission for document")
+        }
+        
+        await ddbClient.update({
+            TableName: "shared-docs-documents",
+            Key: { 'documentName': body.documentName},
+            UpdateExpression: "SET documentUserAccounts = list_append(documentUserAccounts, :a)",
+            ExpressionAttributeValues: { ':d': [body.newUserName]},
+        }).promise();
+        
+        return success({})
+    }
+    catch(err)
+    {
+       throw err;
+    }
+}
+
 
 const renameDocument = async(connectionId, body) => {
     if(!body.hasOwnProperty("documentOldName")) return error("No Old documentName")
@@ -634,6 +680,9 @@ const defaultHandler = async(connectionId, body) => {
             break;
         case "duplicateDocument": 
             documentResult = await duplicateDocument(connectionId, body);
+            break;
+        case "shareDocument": 
+            documentResult = await shareDocument(connectionId, body);
             break;
         case "newDocumentVersion":
             documentResult = await newDocumentVersion(connectionId, body);
