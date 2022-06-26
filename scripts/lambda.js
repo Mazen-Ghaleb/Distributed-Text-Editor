@@ -397,6 +397,8 @@ const createAccount = async(connectionId, body) => {
     
     try
     {
+        let accDate = new Date().toUTCString();
+        
         await ddbClient.put({
             TableName: "shared-docs-accounts",
             Item: {
@@ -404,7 +406,7 @@ const createAccount = async(connectionId, body) => {
                 "userAccountName": body.userAccountName,
                 "userEmail": body.userEmail,
                 "userPassword": body.userPassword,
-                "creationDate": new Date().toUTCString
+                "creationDate": accDate,
             },
             ConditionExpression:"attribute_not_exists(userName)",
             ConditionExpression:"attribute_not_exists(userEmail)",
@@ -419,7 +421,13 @@ const createAccount = async(connectionId, body) => {
         }).promise();
         if(old.Attributes["loggedAccount"] == body.userName) return success({})
         
-        return success({})
+        return success({"loggedAccount": {
+                "userName": body.userName,
+                "userAccountName": body.userAccountName,
+                "userEmail": body.userEmail,
+                "userPassword": body.userPassword,
+                "creationDate": accDate,
+            }})
     }
     catch(err)
     {
@@ -451,7 +459,7 @@ const loginAccount = async(connectionId, body) => {
         }).promise();
         if(old.Attributes["loggedAccount"] == body.userName) return success({})
         
-        return success({})
+        return success({"loggedAccount": JSON.stringify(account.Item)})
     }
     catch(err)
     {
@@ -484,7 +492,7 @@ const changeAccountPassword = async(connectionId, body) => {
             ConditionExpression:"attribute_exists(userEmail)",
         }).promise();
         
-        return success({})
+        return success()
     }
     catch(err)
     {

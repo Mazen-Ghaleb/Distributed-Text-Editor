@@ -9,8 +9,11 @@ function search_button() {
   }
 
 function generateNavBar() {
-  
-    let nav = document.createElement("nav");
+    document.body.append(generateNav());
+}
+
+function generateNav() {
+  let nav = document.createElement("nav");
     nav.classList.add(
       "navbar",
       "navbar-dark",
@@ -36,7 +39,51 @@ function generateNavBar() {
           <button class="btn btn-outline-success my-2 my-sm-0" style="text-decoration:underline;border:none; color:lightblue;">Sign Up</button></a>
         </div>
     `;
-    document.body.append(nav);
+    return nav;
+}
+
+function checkLogged(){
+  if (JSON.parse(localStorage.getItem("LoggedIn")) === "True") {
+    if(document.IS_SIGN){
+      window.location.assign(pathRoot)
+    }
+      loggedAccount = JSON.parse(localStorage.getItem("AccLoggedIn"));
+      console.log(loggedAccount)
+      AWS.call("loginAccount", { "userName": loggedAccount.userName, "userPassword": loggedAccount.userPassword})
+  }
+  else {
+      if(!document.IS_SIGN){
+      window.location.assign(pathRoot+'/views/SignIn.html')
+      }
+  }
+}
+
+function sign_out(){
+  localStorage.setItem("LoggedIn", JSON.stringify("False"));
+  localStorage.setItem("AccLoggedIn", null);
+  document.getElementsByTagName("nav")[0].remove();
+  document.body.prepend(generateNav());
+}
+
+function display_account_data(goBack) {
+  if (JSON.parse(localStorage.getItem("LoggedIn")) !== "True") return;
+
+  let account = JSON.parse(localStorage.getItem("AccLoggedIn"));
+  let sign_in_button = document.getElementById("signIn");
+  let sign_up_button = document.getElementById("signUp");
+  let parent_node = sign_in_button.parentElement;
+  parent_node.removeChild(sign_in_button);
+  parent_node.removeChild(sign_up_button);
+  let container = document.createElement("div");
+  container.id = "profile-container";
+  container.innerHTML = `
+  <button style="height:50px;width:50px;padding:10px; text-decoration:underline; border:none; color:lightblue;"class="btn btn-outline-secondary my-2 my-sm-0" id="signOut"><img src='${pathRoot}/media/profile.png' style='cursor:pointer;width:100%;height:100%'></button>
+  <button style="text-decoration:underline; border:none; color:lightblue;"class="btn btn-outline-danger my-2 my-sm-0" id="signOut" onclick="sign_out()">Sign Out</button>
+  `;
+
+  container.style.display = "inline"; 
+  parent_node.appendChild(container);
+
 }
 
 let pathRoot = "..";

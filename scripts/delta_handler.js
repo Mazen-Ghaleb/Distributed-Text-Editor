@@ -193,7 +193,10 @@ function openHandler() {
     if (!document.IS_IFRAME) {
         console.log("open")
     }
-    AWS.call("listDocuments")
+    if (!document.IS_IFRAME) {
+        checkLogged();
+    }
+    AWS.call("listDocuments");
 }
 
 function newDocumentHandler(statusCode, body) {
@@ -689,20 +692,36 @@ function clientDisconnectHandler(statusCode,body){
 function createAccountHandler(statusCode, body) {
     if (statusCode !== 200) {
         alertError("Could not create the account " + body);
+        localStorage.setItem("LoggedIn",JSON.stringify("False"));
+        localStorage.setItem("AccLoggedIn", null)
         return;
     }
         alertSuccess("Created new account");
+        localStorage.setItem("LoggedIn",JSON.stringify("True"));
+        localStorage.setItem("AccLoggedIn",JSON.stringify(body["loggedAccount"]));
+        display_account_data();
         window.location.assign(pathRoot)
 }
 
 function loginAccountHandler(statusCode, body) {
     if (statusCode !== 200) {
         alertError("Could not login " + body);
+        localStorage.setItem("LoggedIn",JSON.stringify("False"));
+        localStorage.setItem("AccLoggedIn", null)
         return;
     }
-        alertSuccess("Loggged in successfully");
-        window.location.assign(pathRoot)
+        localStorage.setItem("LoggedIn",JSON.stringify("True"));
+        localStorage.setItem("AccLoggedIn",(body["loggedAccount"]))
+        loggedAccount = JSON.parse(localStorage.getItem("AccLoggedIn"));
+        // console.log(loggedAccount)
+        // console.log(loggedAccount.userName, loggedAccount.userPassword)
+        display_account_data();
+        if (document.IS_SIGN){
+            alertSuccess("Loggged in successfully");
+            window.location.assign(pathRoot);
+        }
 }
+
 
 function changeAccountPasswordHandler(statusCode, body) {
     if (statusCode !== 200) {
@@ -712,7 +731,6 @@ function changeAccountPasswordHandler(statusCode, body) {
         alertSuccess("Changed Passwored");
         window.location.assign(pathRoot+'/views/SignIn.html')
 }
-
 
 function messageHandler(message) {
     let statusCode = message.statusCode;
@@ -759,7 +777,7 @@ function messageHandler(message) {
             createAccountHandler(statusCode,body);
             break;
         case "loginAccount":
-            loginAccountHandler(connectionId, body);
+            loginAccountHandler(statusCode, body);
             break;
         case "changeAccountPassword":
             changeAccountPasswordHandler(statusCode,body);

@@ -28,16 +28,22 @@
         <link rel="stylesheet" type="text/css" href="../styles/Sign.css">
         <script src="../scripts/index.js"></script>
         <script>
-          //let account = undefined; //TODO
-          let account = {"userName":"Mazen9", "userAccountName":"Mazen Mostafa", "userEmail":"mazen@mazen.com", "userPassword": "mZzen9ASU", "creationDate": new Date().toUTCString}
+          document.IS_SIGN = true;
+          let loggedAccount = undefined;
+          //let loggedAccount = {"userName":"Mazen9", "userAccountName":"Mazen Mostafa", "userEmail":"mazen@mazen.com", "userPassword": "mZzen9ASU", "creationDate": new Date().toUTCString}
         </script>
     </head>
     <body>
+      <div class="alert" style="display: none">
+        <span class="closebtn" style="display: block" onclick="this.parentElement.style.display='none';">&times;</span>
+        <div id="errorAlert" style="display: inline">This is an alert box.</div>
+      </div>
+      
       <script>
         function login(userName,password) {    
           document.getElementById('CheckMail').innerHTML = '';
           document.getElementById('CheckPassword').innerHTML = '';
-          
+          console.log({ "userName": userName, "userPassword": password})
           AWS.call("loginAccount", { "userName": userName, "userPassword": password})
 
           return false;
