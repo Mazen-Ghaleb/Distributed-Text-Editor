@@ -161,9 +161,10 @@ function alertSuccess(message) {
 }
 
 function openDocumentHandler(documentName) {
-    if ((Object.keys(allDocuments).map(function (key) {
-        return allDocuments[key]["documentName"].indexOf(documentName) != -1;
-    }))) {
+    let exists = Object.keys(allDocuments).some((k) => {
+    return allDocuments[k]["documentName"] === documentName;});
+    if (exists)
+    {
         documentsUI.style.display = "none";
         //console.log(documentName)
         AWS.call("joinDocument", { "documentName": documentName });
@@ -245,7 +246,6 @@ function generateCardsForAllDocuments(documents) {
                                 newDocumentName = documentNewName;
                                 }'>Duplicate</a>
                                 <a class="dropdown-item" href="javascript:;" onclick='AWS.call("deleteDocument", { "documentName": "${doc.documentName}" });'>Delete</a>
-                                
                             </div>
                         </div>
                     </div>
@@ -322,12 +322,12 @@ function listDocumentsHandler(statusCode, body) {
     }
     else if (document.IS_DOC) {
         allDocuments = body["documents"];
-        if ((Object.keys(allDocuments).map(function (key) {
-            return allDocuments[key]["documentName"].indexOf(documentName) != -1;
-        }))){
+        let exists = Object.keys(allDocuments).some((k) => {
+            return allDocuments[k]["documentName"] === decodeURI(location.href.split('doc=')[1]);});
+
+        if (exists){
         var script = document.createElement('script');
-        console.log("BUR", new URL(location.href).searchParams.get("doc"), location.href)
-        script.innerHTML = `openDocumentHandler(new URL(location.href).searchParams.get("doc"));`
+        script.innerHTML = `openDocumentHandler(decodeURI(location.href.split('doc=')[1]));`
         document.body.appendChild(script);
         }
         else {
@@ -337,9 +337,19 @@ function listDocumentsHandler(statusCode, body) {
     }
     else if (document.IS_VERSIONING) {
         allDocuments = body["documents"];
-        var script = document.createElement('script');
-        script.innerHTML = `openDocumentHandler(decodeURI(location.href.split('doc=')[1]));`
-        document.body.appendChild(script);
+        let exists = Object.keys(allDocuments).some((k) => {
+        return allDocuments[k]["documentName"] === decodeURI(location.href.split('doc=')[1]);});
+        if (exists){
+            VersioningDiv.style.display = "block";
+            NotExisting.style.display="none";
+            var script = document.createElement('script');
+            script.innerHTML = `openDocumentHandler(decodeURI(location.href.split('doc=')[1]));`
+            document.body.appendChild(script);
+        }
+        else {
+            VersioningDiv.style.display = "none";
+            NotExisting.style.display="block";
+        }
     }
     else {
         allDocuments = body["documents"];
