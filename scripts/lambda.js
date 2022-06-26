@@ -588,7 +588,7 @@ const loginAccount = async(connectionId, body) => {
             Key: { 'userName': body.userName },
         }).promise();
         if(!account.Item) return error("Couldn't find account with that name")
-        if(!account.Item["userPassword"] === body.userPassword) return error("Incorrect Password")
+        if(account.Item["userPassword"] !== body.userPassword) return error("Incorrect Password")
         
         const old = await ddbClient.update({
             TableName: "shared-docs-users",
@@ -619,7 +619,6 @@ const changeAccountPassword = async(connectionId, body) => {
         const account =  await ddbClient.get({
         TableName: "shared-docs-accounts",
         Key: { 'userName': body.userName },
-        //ProjectionExpression: "userName"
         }).promise();
         
         await ddbClient.update({
