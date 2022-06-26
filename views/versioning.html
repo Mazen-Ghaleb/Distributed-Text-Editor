@@ -47,11 +47,13 @@
         if (confirm('Are you sure you would like to create new document for the displayed version ?')) {
           let documentNewName = prompt('Please enter your new document name for the displayed version');
           if (documentNewName !== null) {
+            loggedAccount = JSON.parse(localStorage.getItem('AccLoggedIn'));
             AWS.call('newDocumentVersion', {
               documentOldName: decodeURI(location.href.split('doc=')[1]),
               documentNewName: documentNewName,
               documentDelta: JSON.stringify(currentDocumentDelta),
               documentVersion: JSON.stringify(currentDocumentDeltaNum),
+              userName: loggedAccount.userName,
             });
             window.location.assign(pathRoot + '/views/document.html?doc=' + documentNewName);
           }

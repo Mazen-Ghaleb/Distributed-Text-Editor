@@ -71,9 +71,16 @@ const disconnectHandler = async(connectionId) => {
 
 const newDocument = async(connectionId, body) => {
     if(!body.hasOwnProperty("documentName")) return error("No documentName")
-    
+    if(!body.hasOwnProperty("userName")) return error("No userName")
+
     try
     {
+        const account = await ddbClient.get({
+            TableName: "shared-docs-accounts",
+            Key: { 'userName': body.userName },
+        }).promise();
+        if(!account.Item) return error("Couldn't find account with that name")
+        
         await ddbClient.put({
             TableName: "shared-docs-documents",
             Item: {
@@ -82,6 +89,7 @@ const newDocument = async(connectionId, body) => {
                 "documentDeltas": [],
                 "documentUsers": ddbClient.createSet([connectionId]),
                 "documentDate": new Date().toUTCString(),
+                "documentUserAccounts": ["admin", body.userName],
             },
             ConditionExpression:"attribute_not_exists(documentName)",
         }).promise();
@@ -108,13 +116,26 @@ const newDocument = async(connectionId, body) => {
 const newDocumentVersion = async(connectionId, body) => {
     if(!body.hasOwnProperty("documentOldName")) return error("No Old documentName")
     if(!body.hasOwnProperty("documentNewName")) return error("No New documentName")
+    if(!body.hasOwnProperty("userName")) return error("No userName")
+
     try
-    {
+    {   
+        const account = await ddbClient.get({
+            TableName: "shared-docs-accounts",
+            Key: { 'userName': body.userName },
+        }).promise();
+        if(!account.Item) return error("Couldn't find account with that name")
+        
         const doc = await ddbClient.get({
             TableName: "shared-docs-documents",
             Key: { 'documentName': body.documentOldName },
         }).promise();
         if(!doc.Item) return error("Couldn't find document with that name")
+        
+        let exists = doc["Item"]["documentUserAccounts"].includes(body.userName);
+        if (!exists) {
+            return error("Username doesn't have permission for document")
+        }
      
         await ddbClient.put({
             TableName: "shared-docs-documents",
@@ -124,6 +145,7 @@ const newDocumentVersion = async(connectionId, body) => {
                 "documentDeltas": [body.documentDelta],
                 "documentUsers": doc.Item["documentUsers"],
                 "documentDate": new Date().toUTCString(),
+                "documentUserAccounts": doc.Item["documentUserAccounts"],
             },
             ConditionExpression:"attribute_not_exists(body.documentNewName)",
         }).promise();
@@ -140,9 +162,26 @@ const newDocumentVersion = async(connectionId, body) => {
 
 const deleteDocument = async(connectionId, body) => {
     if(!body.hasOwnProperty("documentName")) return error("No documentName")
-    
+    if(!body.hasOwnProperty("userName")) return error("No userName")
     try
     {
+        const account = await ddbClient.get({
+            TableName: "shared-docs-accounts",
+            Key: { 'userName': body.userName },
+        }).promise();
+        if(!account.Item) return error("Couldn't find account with that name")
+        
+        const doc = await ddbClient.get({
+        TableName: "shared-docs-documents",
+        Key: { 'documentName': body.documentName },
+        }).promise();
+        if(!doc.Item) return error("Invalid documentName")
+        
+        let exists = doc["Item"]["documentUserAccounts"].includes(body.userName);
+        if (!exists) {
+            return error("Username doesn't have permission for document")
+        }
+        
         await ddbClient.delete({
             TableName: "shared-docs-documents",
             Key: {"documentName": body.documentName},
@@ -162,14 +201,27 @@ const deleteDocument = async(connectionId, body) => {
 const duplicateDocument = async(connectionId, body) => {
     if(!body.hasOwnProperty("documentOldName")) return error("No Old documentName")
     if(!body.hasOwnProperty("documentNewName")) return error("No New documentName")
+    if(!body.hasOwnProperty("userName")) return error("No userName")
+
     try
-    {
+    {   
+        const account = await ddbClient.get({
+            TableName: "shared-docs-accounts",
+            Key: { 'userName': body.userName },
+        }).promise();
+        if(!account.Item) return error("Couldn't find account with that name")
+
         const doc = await ddbClient.get({
             TableName: "shared-docs-documents",
             Key: { 'documentName': body.documentOldName },
         }).promise();
         if(!doc.Item) return error("Couldn't find document with that name")
-     
+        
+        let exists = doc["Item"]["documentUserAccounts"].includes(body.userName);
+        if (!exists) {
+            return error("Username doesn't have permission for document")
+        }
+        
         await ddbClient.put({
             TableName: "shared-docs-documents",
             Item: {
@@ -178,6 +230,7 @@ const duplicateDocument = async(connectionId, body) => {
                 "documentDeltas": doc.Item["documentDeltas"],
                 "documentUsers": doc.Item["documentUsers"],
                 "documentDate": new Date().toUTCString(),
+                "documentUserAccounts": doc.Item["documentUserAccounts"],
             },
             ConditionExpression:"attribute_not_exists(body.documentNewName)",
         }).promise();
@@ -195,13 +248,26 @@ const duplicateDocument = async(connectionId, body) => {
 const renameDocument = async(connectionId, body) => {
     if(!body.hasOwnProperty("documentOldName")) return error("No Old documentName")
     if(!body.hasOwnProperty("documentNewName")) return error("No New documentName")
+    if(!body.hasOwnProperty("userName")) return error("No userName")
+
     try
     {
+        const account = await ddbClient.get({
+            TableName: "shared-docs-accounts",
+            Key: { 'userName': body.userName },
+        }).promise();
+        if(!account.Item) return error("Couldn't find account with that name")
+        
         const doc = await ddbClient.get({
             TableName: "shared-docs-documents",
             Key: { 'documentName': body.documentOldName },
         }).promise();
         if(!doc.Item) return error("Couldn't find document with that name")
+        
+        let exists = doc["Item"]["documentUserAccounts"].includes(body.userName);
+        if (!exists) {
+            return error("Username doesn't have permission for document")
+        }
      
         await ddbClient.put({
             TableName: "shared-docs-documents",
@@ -211,6 +277,7 @@ const renameDocument = async(connectionId, body) => {
                 "documentDeltas": doc.Item["documentDeltas"],
                 "documentUsers": doc.Item["documentUsers"],
                 "documentDate": doc.Item["documentDate"],
+                "documentUserAccounts": doc.Item["documentUserAccounts"],
             },
             ConditionExpression:"attribute_not_exists(body.documentNewName)",
         }).promise();
@@ -231,21 +298,48 @@ const renameDocument = async(connectionId, body) => {
 }
 
 const listDocuments = async(connectionId, body) => {
+    if(!body.hasOwnProperty("userName")) return error("No userName")
+    const account = await ddbClient.get({
+            TableName: "shared-docs-accounts",
+            Key: { 'userName': body.userName },
+        }).promise();
+        if(!account.Item) return error("Couldn't find account with that name")
+    
     const scanResult = await ddbClient.scan({
         TableName : "shared-docs-documents",
-        ProjectionExpression: ["documentName", "documentVersion", "documentDate"]
+        ProjectionExpression: ["documentName", "documentVersion", "documentDate","documentUserAccounts"]
     }).promise();
-    return success({"documents" : scanResult["Items"]})
+    
+    let accScanResult = [];
+    for (var i = 0; i < scanResult["Items"].length; i++){
+        let exists = scanResult["Items"][i]["documentUserAccounts"].includes(body.userName);
+        if (exists) {
+            accScanResult.push(scanResult["Items"][i])
+        }
+    }
+    return success({"documents" : accScanResult})
 }
 
 const joinDocument = async(connectionId, body) => {
     if(!body.hasOwnProperty("documentName")) return error("No documentName")
+    if(!body.hasOwnProperty("userName")) return error("No userName")
+
+    const account = await ddbClient.get({
+            TableName: "shared-docs-accounts",
+            Key: { 'userName': body.userName },
+        }).promise();
+        if(!account.Item) return error("Couldn't find account with that name")
     
     const doc = await ddbClient.get({
         TableName: "shared-docs-documents",
         Key: { 'documentName': body.documentName },
     }).promise();
     if(!doc.Item) return error("Invalid documentName")
+    
+        let exists = doc["Item"]["documentUserAccounts"].includes(body.userName);
+        if (!exists) {
+            return error("Username doesn't have permission for document")
+        }
     
     const updatedDoc = await ddbClient.update({
         TableName: "shared-docs-documents",

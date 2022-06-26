@@ -43,7 +43,8 @@
   <body>
     <script>
       function updateDocuments() {
-        AWS.call('listDocuments');
+        loggedAccount = JSON.parse(localStorage.getItem('AccLoggedIn'));
+        AWS.call('listDocuments', { userName: loggedAccount.userName });
       }
       var SelectionInterval = setInterval(updateDocuments, 5000);
       generateNavBar();

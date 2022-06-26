@@ -167,7 +167,8 @@ function openDocumentHandler(documentName) {
     {
         documentsUI.style.display = "none";
         //console.log(documentName)
-        AWS.call("joinDocument", { "documentName": documentName });
+        loggedAccount = JSON.parse(localStorage.getItem("AccLoggedIn"));
+        AWS.call("joinDocument", { "documentName": documentName, "userName":loggedAccount.userName});
         if (document.IS_INDEX)
             clearInterval(SelectionInterval);
     }
@@ -182,21 +183,31 @@ function createDocumentHandler() {
         alertError("Please enter the new document's name")
         return false;
     }
+
+    if (documentName.value.includes(" ")) {
+        alertError("Document name can't have space")
+        return false;
+    }
+
     documentsUI.style.display = "none";
     newDocumentName = documentName.value;
-    AWS.call("newDocument", { "documentName": newDocumentName});
+    loggedAccount = JSON.parse(localStorage.getItem("AccLoggedIn"));
+    AWS.call("newDocument", { "documentName": newDocumentName, "userName": loggedAccount.userName});
     clearInterval(SelectionInterval);
     return false;
 }
 
 function openHandler() {
     if (!document.IS_IFRAME) {
-        console.log("open")
+        //console.log("open")
     }
     if (!document.IS_IFRAME) {
         checkLogged();
     }
-    AWS.call("listDocuments");
+    if (!document.IS_SIGN) {
+    loggedAccount = JSON.parse(localStorage.getItem('AccLoggedIn'));
+    AWS.call('listDocuments', {"userName":loggedAccount.userName});
+    }
 }
 
 function newDocumentHandler(statusCode, body) {
@@ -219,6 +230,7 @@ function generateCardsForAllDocuments(documents) {
         //get div with id cardsDiv
         let cardsDiv = document.getElementById("documentsCardsDiv");
         cardsDiv.innerHTML = "";
+        loggedAccount = JSON.parse(localStorage.getItem("AccLoggedIn"));
         //loop through all documents
         for (const doc of documents) {
             docDate = doc.documentDate.substring(5, 16).split(' ');
@@ -240,16 +252,21 @@ function generateCardsForAllDocuments(documents) {
                                 <a class="dropdown-item" href="${pathRoot}/views/versioning.html?doc=${doc.documentName}">Version Document</a>
                                 <a class="dropdown-item" href="javascript:;" onclick='
                                 let documentNewName= prompt("Please enter your new document name");
-                                if (documentNewName !== null) {
-                                AWS.call("renameDocument", { "documentOldName": "${doc.documentName}", "documentNewName": documentNewName });
-                                }'>Rename</a>
+                                if (documentNewName !== null && !documentNewName.includes(" ")) {
+                                AWS.call("renameDocument", { "documentOldName": "${doc.documentName}", "documentNewName": documentNewName, "userName": "${loggedAccount.userName}"});
+                                }
+                                else{
+                                    alertError("Invalid Document Name");
+                                } 
+                                '>Rename</a>
                                 <a class="dropdown-item" href="javascript:;" onclick='
                                 let documentNewName= prompt("Please enter your new document name");
                                 if (documentNewName !== null) {
-                                AWS.call("duplicateDocument", { "documentOldName": "${doc.documentName}", "documentNewName": documentNewName });
+                                AWS.call("duplicateDocument", { "documentOldName": "${doc.documentName}", "documentNewName": documentNewName,"userName": "${loggedAccount.userName}"});
                                 newDocumentName = documentNewName;
                                 }'>Duplicate</a>
-                                <a class="dropdown-item" href="javascript:;" onclick='AWS.call("deleteDocument", { "documentName": "${doc.documentName}" });'>Delete</a>
+                                <a class="dropdown-item" href="javascript:;" onclick='
+                                AWS.call("deleteDocument", { "documentName": "${doc.documentName}" ,"userName": "${loggedAccount.userName}"});'>Delete</a>
                             </div>
                         </div>
                     </div>
@@ -654,7 +671,8 @@ function deleteDocumentHandler(statusCode, body) {
         return;
     }
         alertSuccess("Deleted document successfully");
-        AWS.call('listDocuments');
+        loggedAccount = JSON.parse(localStorage.getItem('AccLoggedIn'));
+        AWS.call('listDocuments', {"userName":loggedAccount.userName});
 }
 function renameDocumentHandler(statusCode, body) {
     if (statusCode !== 200) {
@@ -662,7 +680,8 @@ function renameDocumentHandler(statusCode, body) {
         return;
     }
         alertSuccess("Renamed document successfully");
-        AWS.call('listDocuments');
+        loggedAccount = JSON.parse(localStorage.getItem('AccLoggedIn'));
+        AWS.call('listDocuments', {"userName":loggedAccount.userName});
 }
 function duplicateDocumentHandler(statusCode, body) {
     if (statusCode !== 200) {
@@ -670,7 +689,8 @@ function duplicateDocumentHandler(statusCode, body) {
         return;
     }
         alertSuccess("Duplicated document successfully");
-        AWS.call('listDocuments');
+        loggedAccount = JSON.parse(localStorage.getItem('AccLoggedIn'));
+        AWS.call('listDocuments', {"userName":loggedAccount.userName});
         if (document.IS_INDEX){
         window.location.assign(pathRoot+'/views/document.html?doc='+newDocumentName)
         }
@@ -704,10 +724,13 @@ function createAccountHandler(statusCode, body) {
 }
 
 function loginAccountHandler(statusCode, body) {
+    let navDiv =  document.getElementById("navDiv")
     if (statusCode !== 200) {
         alertError("Could not login " + body);
         localStorage.setItem("LoggedIn",JSON.stringify("False"));
         localStorage.setItem("AccLoggedIn", null)
+        //document.getElementsByTagName("nav")[0].style.display="block";
+        navDiv.style.display = "block";
         return;
     }
         localStorage.setItem("LoggedIn",JSON.stringify("True"));
@@ -716,6 +739,8 @@ function loginAccountHandler(statusCode, body) {
         // console.log(loggedAccount)
         // console.log(loggedAccount.userName, loggedAccount.userPassword)
         display_account_data();
+        //document.getElementsByTagName("nav")[0].style.display="block";
+        navDiv.style.display = "block";
         if (document.IS_SIGN){
             alertSuccess("Loggged in successfully");
             window.location.assign(pathRoot);
