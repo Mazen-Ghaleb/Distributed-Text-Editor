@@ -168,11 +168,6 @@ function openDocumentHandler(documentName) {
     return allDocuments[k]["documentName"] === documentName;});
     if (exists)
     {
-        if (!document.IS_IFRAME) {
-        currentOpenedDocumentName = documentName;
-        setInterval(updateDocuments, 1000);
-        setInterval(checkDocumentDeletion,1000);
-        }
         documentsUI.style.display = "none";
         //console.log(documentName)
         loggedAccount = JSON.parse(localStorage.getItem("AccLoggedIn"));
@@ -733,7 +728,7 @@ function createAccountHandler(statusCode, body) {
         localStorage.setItem("LoggedIn",JSON.stringify("True"));
         localStorage.setItem("AccLoggedIn",JSON.stringify(body["loggedAccount"]));
         display_account_data();
-        window.location.assign(pathRoot)
+        window.location.assign(pathRoot+"/index.html")
 }
 
 function loginAccountHandler(statusCode, body) {
@@ -756,7 +751,7 @@ function loginAccountHandler(statusCode, body) {
     navDiv.style.display = "block";
     if (document.IS_SIGN){
         alertSuccess("Loggged in successfully");
-        window.location.assign(pathRoot);
+        window.location.assign(pathRoot+"/index.html");
     }
 }
 function shareDocumentHandler(statusCode, body) {
@@ -881,8 +876,11 @@ window.addEventListener('online', () => {
     else
     {
         let url = new URL(location.href)
+        let doc = url.searchParams.get("doc");
+        url.searchParams.delete("doc");
         url.searchParams.set("extraDelta", JSON.stringify(pendingDelta));
         url.searchParams.set("extraDeltaVersion", syncedVersion);
+        url.searchParams.set("doc", doc);
 
         window.location.assign(url.toString());
         // new URL(location.href).searchParams.get("doc")
