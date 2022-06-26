@@ -278,7 +278,7 @@ const shareDocument = async(connectionId, body) => {
         await ddbClient.update({
             TableName: "shared-docs-documents",
             Key: { 'documentName': body.documentName},
-            UpdateExpression: "SET documentUserAccounts = list_append(documentUserAccounts, :a)",
+            UpdateExpression: "SET documentUserAccounts = list_append(documentUserAccounts, :d)",
             ExpressionAttributeValues: { ':d': [body.newUserName]},
         }).promise();
         
@@ -626,19 +626,17 @@ const changeAccountPassword = async(connectionId, body) => {
             TableName: "shared-docs-accounts",
             Key: { 'userName': account.Item["userName"] },
             UpdateExpression: "SET userPassword = :n",
-            ExpressionAttributeValues: {':n': body.userNewPassword,':o': body.userOldPassword},
             ConditionExpression:"userPassword = :o",
-            ConditionExpression:"attribute_exists(userName)",
-            ConditionExpression:"attribute_exists(userEmail)",
+            ExpressionAttributeValues: {':n': body.userNewPassword,':o': body.userOldPassword},
         }).promise();
         
-        return success()
+        return success({})
     }
     catch(err)
     {
         if (err.name !== 'ConditionalCheckFailedException')  throw err;
         
-        return error("An account with that User name or Email doesn't exist \n OR Password doesn't match ")
+        return error("Password doesn't match ")
     }
 }
 
