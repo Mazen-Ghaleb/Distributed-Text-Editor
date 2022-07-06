@@ -1,8 +1,6 @@
 # Distributed Text Editor
 
-For the “Distributed Computing” (CSE354) course’s project we were tasked with creating a distributed text editor in the style of “Google docs”. To this end, this document will serve as documentation and a user guide to how our implementation was done and how to interact with the program.
-
-The distributed text editor needed to have multiple vital features these included, as the name implies, the editor being distributed over multiple clients and/or servers, with the clients being able to contend for shared resources (i.e. the documents) and perform real-time updates to a shared state (i.e. editing the documents). The system should be able to handle the crash of any of the participating nodes and should recover the state of a crashed node once it can resume operation.
+A distributed text editor that is distributed over multiple clients and/or servers, with the clients being able to contend for shared resources (i.e. the documents) and perform real-time updates to a shared state (i.e. editing the documents). The system is able to handle the crash of any of the participating nodes and can recover the state of a crashed node once it can resume operation.
 
 > ⚠ **Notice**: Back-end is currently inactive to save costs.
 
